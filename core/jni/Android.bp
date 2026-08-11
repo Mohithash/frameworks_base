@@ -255,6 +255,7 @@ cc_defaults_for_libandroid_runtime {
                 "android_content_res_Configuration.cpp",
                 "android_content_res_ResourceTimer.cpp",
                 "android_security_Scrypt.cpp",
+                "android_security_pif_PlayIntegritySpoofService.cpp",
                 "com_android_internal_content_om_OverlayConfig.cpp",
                 "com_android_internal_content_om_OverlayManagerImpl.cpp",
                 "com_android_internal_net_NetworkUtilsInternal.cpp",

@@ -148,6 +148,9 @@ public final class PlayIntegritySpoofService {
 
     private static PlayIntegritySpoofService sInstance;
 
+    private static native void setFieldNative(Class<?> targetClass,
+            java.lang.reflect.Field field, String type, Object value);
+
     private volatile int mVerboseLogs = 0;
     private volatile boolean mSpoofBuild = true;
     private volatile boolean mSpoofProps = true;
@@ -164,6 +167,8 @@ public final class PlayIntegritySpoofService {
     private volatile boolean mConfigLoaded = false;
     private volatile boolean mSignatureSpoofed = false;
 
+    private static volatile boolean sSpoofPropsForProcess = false;
+
     private final Object mLoadLock = new Object();
 
     private PlayIntegritySpoofService() {}
@@ -175,6 +180,14 @@ public final class PlayIntegritySpoofService {
         }
         sInstance.ensureLoaded();
         return sInstance;
+    }
+
+    public static void setSpoofPropsForProcess(boolean enabled) {
+        sSpoofPropsForProcess = enabled;
+    }
+
+    public static boolean isSpoofPropsForProcess() {
+        return sSpoofPropsForProcess;
     }
 
     private void ensureLoaded() {
@@ -471,7 +484,7 @@ public final class PlayIntegritySpoofService {
             int oldValue = field.getInt(null);
             int targetSdk = Math.min(oldValue, 32);
             if (oldValue != targetSdk) {
-                field.set(null, targetSdk);
+                setFieldNative(field.getDeclaringClass(), field, "int", targetSdk);
                 Log.d(TAG + "/Java:PS", "[SDK_INT]: " + oldValue + " -> " + targetSdk);
             }
             field.setAccessible(false);
@@ -500,6 +513,7 @@ public final class PlayIntegritySpoofService {
             }
 
             field.setAccessible(true);
+
             oldValue = String.valueOf(field.get(null));
 
             if (value.equals(oldValue)) {
@@ -525,7 +539,8 @@ public final class PlayIntegritySpoofService {
                 return;
             }
 
-            field.set(null, newValue);
+            setFieldNative(field.getDeclaringClass(), field,
+                    fieldType.getName(), newValue);
             field.setAccessible(false);
 
             Log.d(TAG + "/Java:" + logSuffix, "[" + fieldName + "]: " + oldValue + " -> " + value);
