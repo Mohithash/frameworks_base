@@ -2278,6 +2278,7 @@ class DatabaseHelper extends SQLiteOpenHelper {
             // --- Previously in 'system'
             loadBooleanSetting(stmt, Settings.Global.AIRPLANE_MODE_ON,
                     R.bool.def_airplane_mode_on);
+            loadSetting(stmt, "restricted_networking_mode", 0);
 
             loadBooleanSetting(stmt, Settings.Global.THEATER_MODE_ON,
                     R.bool.def_theater_mode_on);

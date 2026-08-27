@@ -45,6 +45,7 @@ import android.annotation.SystemApi;
 import android.annotation.SystemService;
 import android.annotation.TestApi;
 import android.annotation.WorkerThread;
+import android.app.ActivityThread;
 import android.app.PendingIntent;
 import android.app.PropertyInvalidatedCache;
 import android.app.role.RoleManager;
@@ -76,9 +77,13 @@ import android.os.Parcelable;
 import android.os.ParcelableException;
 import android.os.PersistableBundle;
 import android.os.RemoteException;
+import android.os.Process;
 import android.os.ResultReceiver;
+import android.os.ServiceManager;
 import android.os.SystemProperties;
 import android.os.WorkSource;
+import android.privacykit.IPrivacyKitManager;
+import android.privacykit.PrivacyKitKeys;
 import android.provider.Settings.SettingNotFoundException;
 import android.service.carrier.CarrierIdentifier;
 import android.service.carrier.CarrierService;
@@ -2806,7 +2811,9 @@ public class TelephonyManager {
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.P)
     public String getNetworkOperatorName(int subId) {
         int phoneId = SubscriptionManager.getPhoneId(subId);
-        return getTelephonyProperty(phoneId, TelephonyProperties.operator_alpha(), "");
+        return resolvePrivacyKitCarrierIdentifier(getOpPackageName(),
+                PrivacyKitKeys.KEY_NETWORK_OPERATOR_NAME,
+                getTelephonyProperty(phoneId, TelephonyProperties.operator_alpha(), ""));
     }
 
     /**
@@ -2840,7 +2847,9 @@ public class TelephonyManager {
      **/
     @UnsupportedAppUsage
     public String getNetworkOperatorForPhone(int phoneId) {
-        return getTelephonyProperty(phoneId, TelephonyProperties.operator_numeric(), "");
+        return resolvePrivacyKitCarrierIdentifier(getOpPackageName(),
+                PrivacyKitKeys.KEY_NETWORK_OPERATOR,
+                getTelephonyProperty(phoneId, TelephonyProperties.operator_numeric(), ""));
     }
 
 
@@ -4015,7 +4024,9 @@ public class TelephonyManager {
      */
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.P)
     public String getSimOperatorNumericForPhone(int phoneId) {
-        return getTelephonyProperty(phoneId, TelephonyProperties.icc_operator_numeric(), "");
+        return resolvePrivacyKitCarrierIdentifier(getOpPackageName(),
+                PrivacyKitKeys.KEY_SIM_OPERATOR,
+                getTelephonyProperty(phoneId, TelephonyProperties.icc_operator_numeric(), ""));
     }
 
     /**
@@ -4053,7 +4064,9 @@ public class TelephonyManager {
      */
     @UnsupportedAppUsage
     public String getSimOperatorNameForPhone(int phoneId) {
-        return getTelephonyProperty(phoneId, TelephonyProperties.icc_operator_alpha(), "");
+        return resolvePrivacyKitCarrierIdentifier(getOpPackageName(),
+                PrivacyKitKeys.KEY_SIM_OPERATOR_NAME,
+                getTelephonyProperty(phoneId, TelephonyProperties.icc_operator_alpha(), ""));
     }
 
     /**
@@ -4087,7 +4100,9 @@ public class TelephonyManager {
      */
     @UnsupportedAppUsage
     public static String getSimCountryIsoForPhone(int phoneId) {
-        return getTelephonyProperty(phoneId, TelephonyProperties.icc_operator_iso_country(), "");
+        return resolvePrivacyKitCarrierIdentifier(ActivityThread.currentOpPackageName(),
+                PrivacyKitKeys.KEY_SIM_COUNTRY_ISO,
+                getTelephonyProperty(phoneId, TelephonyProperties.icc_operator_iso_country(), ""));
     }
 
     /**
@@ -8515,6 +8530,111 @@ public class TelephonyManager {
     public static String getTelephonyProperty(String property, String defaultVal) {
         String propVal = SystemProperties.get(property);
         return TextUtils.isEmpty(propVal) ? defaultVal : propVal;
+    }
+
+    /**
+     * PrivacyKit-Native per-app resolution for the SIM / network operator
+     * identifiers that {@link #getSimOperatorNumericForPhone},
+     * {@link #getSimOperatorNameForPhone}, {@link #getSimCountryIsoForPhone},
+     * {@link #getNetworkOperatorForPhone} and {@link #getNetworkOperatorName}
+     * all read out of {@link android.sysprop.TelephonyProperties} in the
+     * calling app's own process.
+     *
+     * <p>Because every one of those getters runs in the app process (not in the
+     * phone process), it can resolve through the {@code privacykit} binder
+     * service directly - exactly like the Build.* identity injector and the
+     * Widevine device-id hook - which closes the client-side bypass that the
+     * system-side SubscriptionInfo hook cannot reach.
+     *
+     * <p>Maximally defensive: every failure path (service not up, remote death,
+     * a substitute of the wrong shape, any unexpected throwable) falls open to
+     * {@code realValue}. Spoofing must never turn a working carrier read into a
+     * broken one. Platform components (uid &lt; {@link
+     * Process#FIRST_APPLICATION_UID}) are never rewritten, so system telephony
+     * paths are unaffected. This runs in-process, so the caller package is the
+     * app's own package - there is no binder transaction to read a uid from.
+     *
+     * @hide
+     */
+    private static String resolvePrivacyKitCarrierIdentifier(
+            String packageName, String key, String realValue) {
+        try {
+            if (TextUtils.isEmpty(realValue)) {
+                // The real read produced nothing (no SIM, radio off). PrivacyKit
+                // never fabricates a value where the real device had none.
+                return realValue;
+            }
+            // Same boundary the Build.* identity injector uses: only ordinary
+            // apps are in scope; the platform keeps its real carrier identity.
+            if (Process.myUid() < Process.FIRST_APPLICATION_UID) {
+                return realValue;
+            }
+            if (TextUtils.isEmpty(packageName)) {
+                return realValue;
+            }
+            final IBinder binder = ServiceManager.getService("privacykit");
+            if (binder == null) {
+                return realValue; // PrivacyKitService not up - fail open.
+            }
+            final IPrivacyKitManager manager =
+                    IPrivacyKitManager.Stub.asInterface(binder);
+            final String resolved =
+                    manager.resolveIdentifier(packageName, key, realValue);
+            if (resolved == null || resolved.equals(realValue)) {
+                return realValue; // no rule configured, or a no-op rule.
+            }
+            if (!isPlausiblePrivacyKitCarrierValue(key, resolved)) {
+                // A substitute of the wrong shape (non-digit MCC+MNC, a
+                // 3-letter ISO, ...) would break apps that shape-check the
+                // value, which is worse for the user than no spoof at all.
+                return realValue;
+            }
+            return resolved;
+        } catch (Throwable t) {
+            // Never let a spoof attempt break a telephony read.
+            return realValue;
+        }
+    }
+
+    /**
+     * Shape-validates a PrivacyKit carrier substitute so a malformed rule can
+     * never reshape what apps observe. MCC+MNC must be 5-6 decimal digits and a
+     * SIM-country ISO must be a lower-case 2-letter code; operator names are
+     * free-form SPN text and are accepted as-is (non-emptiness is already
+     * enforced by the caller).
+     *
+     * @hide
+     */
+    private static boolean isPlausiblePrivacyKitCarrierValue(
+            String key, String value) {
+        if (PrivacyKitKeys.KEY_SIM_OPERATOR.equals(key)
+                || PrivacyKitKeys.KEY_NETWORK_OPERATOR.equals(key)) {
+            final int len = value.length();
+            if (len != 5 && len != 6) {
+                return false;
+            }
+            for (int i = 0; i < len; i++) {
+                final char c = value.charAt(i);
+                if (c < '0' || c > '9') {
+                    return false;
+                }
+            }
+            return true;
+        }
+        if (PrivacyKitKeys.KEY_SIM_COUNTRY_ISO.equals(key)) {
+            if (value.length() != 2) {
+                return false;
+            }
+            for (int i = 0; i < 2; i++) {
+                final char c = value.charAt(i);
+                if (c < 'a' || c > 'z') {
+                    return false;
+                }
+            }
+            return true;
+        }
+        // sim_operator_name / network_operator_name: free-form, no fixed shape.
+        return true;
     }
 
     /** @hide */

@@ -31,6 +31,7 @@ import android.graphics.Bitmap;
 import android.graphics.HardwareRenderer;
 import android.os.LocaleList;
 import android.os.Trace;
+import android.privacykit.PrivacyKitIdentityInjector;
 import android.util.DisplayMetrics;
 import android.util.Slog;
 import android.view.ContextThemeWrapper;
@@ -282,6 +283,14 @@ class ConfigurationController {
      * original LocaleList.
      */
     void updateLocaleListFromAppContext(@NonNull Context context) {
+        updateLocaleListFromAppContextInner(context);
+        // PrivacyKit-Native: the real locale list clobbers any per-app locale
+        // override. The inner method has early returns, so re-apply here where
+        // every path converges.
+        PrivacyKitIdentityInjector.reapplyLocaleOverride();
+    }
+
+    private void updateLocaleListFromAppContextInner(@NonNull Context context) {
         final Locale bestLocale = context.getResources().getConfiguration().getLocales().get(0);
         final LocaleList newLocaleList = mResourcesManager.getConfiguration().getLocales();
         final int newLocaleListSize = newLocaleList.size();

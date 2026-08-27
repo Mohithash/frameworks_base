@@ -47,6 +47,7 @@ import android.os.Message;
 import android.os.Process;
 import android.os.RemoteException;
 import android.os.UserHandle;
+import android.privacykit.PrivacyKitKeys;
 import android.provider.DeviceConfig;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.Annotation;
@@ -116,6 +117,7 @@ import com.android.internal.util.DumpUtils;
 import com.android.internal.util.FrameworkStatsLog;
 import com.android.internal.util.IndentingPrintWriter;
 import com.android.server.am.BatteryStatsService;
+import com.android.server.privacykit.PrivacyKitManagerInternal;
 
 import dalvik.annotation.optimization.NeverCompile;
 
@@ -1360,7 +1362,8 @@ public class TelephonyRegistry extends ITelephonyRegistry.Stub {
                         }
                         if (checkCoarseLocationAccess(r, Build.VERSION_CODES.BASE)
                                 && checkFineLocationAccess(r, Build.VERSION_CODES.Q)) {
-                            r.callback.onCellInfoChanged(mCellInfo.get(r.phoneId));
+                            r.callback.onCellInfoChanged(
+                                    maybePrivacyKitCellInfo(r, mCellInfo.get(r.phoneId)));
                         }
                     } catch (RemoteException ex) {
                         remove(r.binder);
@@ -2105,6 +2108,57 @@ public class TelephonyRegistry extends ITelephonyRegistry.Stub {
         }
     }
 
+    /**
+     * Non-empty sentinel passed to PrivacyKit as the real value for the
+     * cell_info key. The resolver returns an empty string only for a
+     * RULE_EMPTY rule and echoes this sentinel back for RULE_REAL or no
+     * rule, so an empty answer unambiguously means the serving-cell list
+     * must be withheld.
+     */
+    private static final String PRIVACY_KIT_CELL_INFO_PRESENT = "present";
+
+    /**
+     * PrivacyKit cell_info hook. When the app that registered {@code r} has
+     * a RULE_EMPTY cell_info rule, returns an empty list so serving-cell
+     * information is withheld from it; otherwise returns {@code real}
+     * unchanged.
+     *
+     * <p>This runs on a system_server thread at delivery time, so the caller
+     * identity is taken from the Record captured at registration
+     * ({@code r.callingPackage} and {@code r.callerUid}), never from
+     * Binder.getCallingUid() here: by delivery time the binder identity is
+     * the telephony stack, not the registered app. Fails open (delivers the
+     * real list) on any error, for platform-uid callers, and for every rule
+     * type other than Empty, because a serving-cell list has no meaningful
+     * fabricated form.
+     */
+    private static List<CellInfo> maybePrivacyKitCellInfo(Record r, List<CellInfo> real) {
+        try {
+            if (r == null || real == null || real.isEmpty()) {
+                return real;
+            }
+            final String pkg = r.callingPackage;
+            if (pkg == null || r.callerUid < Process.FIRST_APPLICATION_UID) {
+                // Never withhold from platform components.
+                return real;
+            }
+            final PrivacyKitManagerInternal pk =
+                    LocalServices.getService(PrivacyKitManagerInternal.class);
+            if (pk == null) {
+                return real;
+            }
+            final String resolved = pk.resolveIdentifier(
+                    pkg, PrivacyKitKeys.KEY_CELL_INFO, PRIVACY_KIT_CELL_INFO_PRESENT);
+            if (resolved != null && resolved.isEmpty()) {
+                return Collections.emptyList();
+            }
+            return real;
+        } catch (RuntimeException e) {
+            Rlog.w(TAG, "PrivacyKit cell_info hook failed; delivering the real list");
+            return real;
+        }
+    }
+
     public void notifyCellInfo(List<CellInfo> cellInfo) {
          notifyCellInfoForSubscriber(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID, cellInfo);
     }
@@ -2139,7 +2193,7 @@ public class TelephonyRegistry extends ITelephonyRegistry.Stub {
                                 log("notifyCellInfoForSubscriber: mCellInfo=" + cellInfo
                                     + " r=" + r);
                             }
-                            r.callback.onCellInfoChanged(cellInfo);
+                            r.callback.onCellInfoChanged(maybePrivacyKitCellInfo(r, cellInfo));
                         } catch (RemoteException ex) {
                             mRemoveList.add(r.binder);
                         }
@@ -4969,7 +5023,8 @@ public class TelephonyRegistry extends ITelephonyRegistry.Stub {
                 }
                 if (checkCoarseLocationAccess(r, Build.VERSION_CODES.BASE)
                         && checkFineLocationAccess(r, Build.VERSION_CODES.Q)) {
-                    r.callback.onCellInfoChanged(mCellInfo.get(phoneId));
+                    r.callback.onCellInfoChanged(
+                            maybePrivacyKitCellInfo(r, mCellInfo.get(phoneId)));
                 }
             } catch (RemoteException ex) {
                 mRemoveList.add(r.binder);

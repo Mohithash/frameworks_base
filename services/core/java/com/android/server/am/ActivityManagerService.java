@@ -6020,7 +6020,7 @@ public class ActivityManagerService extends IActivityManager.Stub
     }
 
     private void showConsoleNotificationIfActive() {
-        if (!SystemProperties.get("init.svc.console").equals("running")) {
+        if (true /* BestROM: suppress serial-console notification */) {
             return;
         }
         String title = mContext

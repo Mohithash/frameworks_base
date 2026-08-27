@@ -137,6 +137,11 @@ public class SystemProperties {
     private static native void native_add_change_callback();
     private static native void native_report_sysprop_change();
 
+    // PrivacyKit per-app native system-property mirror (STEP 3/4): pushes a
+    // Build.* override down to the matching read-only property so both agree.
+    private static native void native_pk_override(String name, String value);
+    private static native void native_pk_seal();
+
     /**
      * Get the String value for the given {@code key}.
      *
@@ -312,6 +317,26 @@ public class SystemProperties {
     @UnsupportedAppUsage
     public static void reportSyspropChanged() {
         native_report_sysprop_change();
+    }
+
+    /**
+     * Install a per-process override so a read-only system property reports the
+     * same value as the Java {@code Build.*} field PrivacyKit already spoofed.
+     * Process-local, append-only, and ignored once
+     * {@link #sealPrivacyKitOverrides()} has run.
+     * @hide
+     */
+    public static void setPrivacyKitOverride(String name, String value) {
+        native_pk_override(name, value);
+    }
+
+    /**
+     * Seal the per-process PrivacyKit override table: no further overrides are
+     * accepted for the lifetime of this process.
+     * @hide
+     */
+    public static void sealPrivacyKitOverrides() {
+        native_pk_seal();
     }
 
     /**

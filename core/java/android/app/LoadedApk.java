@@ -2450,7 +2450,20 @@ public final class LoadedApk {
             } else {
                 // If there is a new viable service, it is now connected.
                 if (service != null) {
-                    mConnection.onServiceConnected(name, service, session);
+                    // PrivacyKit-Native: wrap ONLY the IBinder delivered to the app
+                    // (the real binder is what was linkToDeath'd and stored in
+                    // mActiveConnections above, so death/disconnect bookkeeping is
+                    // untouched). The filter matches on the interface descriptor,
+                    // which R8 does not rename, so it survives a GMS update, and
+                    // it substitutes by rewriting the reply Parcel rather than by
+                    // hooking a renamable getter. No-op unless one of the
+                    // persist.sys.privacykit.* spoof flags is on and the bound
+                    // service reports a known identity descriptor; otherwise it
+                    // returns the real binder unchanged.
+                    final IBinder pkDelivered =
+                            android.privacykit.PrivacyKitGmsBinderFilter.maybeWrap(
+                                    name, service, mContext.getPackageName());
+                    mConnection.onServiceConnected(name, pkDelivered, session);
                 } else {
                     // The binding machinery worked, but the remote returned null from onBind().
                     mConnection.onNullBinding(name);

@@ -26,10 +26,13 @@ import android.os.IDeviceIdentifiersPolicyService;
 import android.os.RemoteException;
 import android.os.SystemProperties;
 import android.os.UserHandle;
+import android.privacykit.PrivacyKitKeys;
+import android.util.Slog;
 
 import com.android.internal.telephony.TelephonyPermissions;
 import com.android.server.LocalServices;
 import com.android.server.SystemService;
+import com.android.server.privacykit.PrivacyKitManagerInternal;
 
 /**
  * This service defines the policy for accessing device identifiers.
@@ -79,7 +82,24 @@ public final class DeviceIdentifiersPolicyService extends SystemService {
                     callingPackage, callingFeatureId, "getSerial")) {
                 return Build.UNKNOWN;
             }
-            return SystemProperties.get("ro.serialno", Build.UNKNOWN);
+            final String realSerial = SystemProperties.get("ro.serialno", Build.UNKNOWN);
+            // PrivacyKit-Native: per-app serial substitution. Fails open on any
+            // problem - a broken hook must never break serial reads.
+            try {
+                final PrivacyKitManagerInternal pk =
+                        LocalServices.getService(PrivacyKitManagerInternal.class);
+                if (callingPackage != null && pk != null) {
+                    final String resolved = pk.resolveIdentifier(
+                            callingPackage, PrivacyKitKeys.KEY_SERIAL, realSerial);
+                    if (resolved != null) {
+                        return resolved;
+                    }
+                }
+            } catch (RuntimeException e) {
+                Slog.w(DeviceIdentifiersPolicyService.class.getSimpleName(),
+                        "PrivacyKit serial hook failed; returning the real serial");
+            }
+            return realSerial;
         }
 
         private boolean checkPackageBelongsToCaller(String callingPackage) {
