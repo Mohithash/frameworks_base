@@ -858,7 +858,7 @@ public class NetworkPolicyManagerService extends INetworkPolicyManager.Stub {
 
         public boolean isRestrictedModeEnabled() {
             return Settings.Global.getInt(mContext.getContentResolver(),
-                    Settings.Global.RESTRICTED_NETWORKING_MODE, 0) != 0;
+                    Settings.Global.RESTRICTED_NETWORKING_MODE, 0) != 0 && false; /* BestROM: never enforce restricted-networking so apps always have internet */
         }
 
         @Override
