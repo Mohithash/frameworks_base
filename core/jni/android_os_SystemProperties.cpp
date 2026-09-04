@@ -36,6 +36,36 @@
 # include <sys/system_properties.h>
 #endif
 
+// PrivacyKit platform-private libc exports (STEP 2): keep the per-app native
+// property mirror in sync with the Java Build.* overrides. Resolved at runtime
+// via dlsym rather than a link-time reference: the symbols live in libc.so
+// (LIBC_PLATFORM version node) so dlsym finds them, but they are not in the libc
+// link stub libandroid_runtime links against. dlsym also fails safe - a missing
+// symbol just leaves the real properties in place.
+#include <dlfcn.h>
+namespace {
+// dlopen the loaded libc and dlsym its handle: __system_property_privacykit_*
+// are LIBC_PLATFORM symbols in the runtime-APEX libc namespace, which
+// dlsym(RTLD_DEFAULT) does not cross from libandroid_runtime. A handle lookup
+// does. RTLD_DEFAULT is kept as a fallback; a null result is a safe no-op.
+void* pk_libc_sym(const char* sym) {
+    static void* h = dlopen("libc.so", RTLD_NOLOAD | RTLD_NODELETE);
+    void* s = h ? dlsym(h, sym) : nullptr;
+    if (!s) s = dlsym(RTLD_DEFAULT, sym);
+    return s;
+}
+void pk_prop_override(const char* name, const char* value) {
+    using Fn = void (*)(const char*, const char*);
+    static Fn fn = reinterpret_cast<Fn>(pk_libc_sym("__system_property_privacykit_override"));
+    if (fn) fn(name, value);
+}
+void pk_prop_seal() {
+    using Fn = void (*)();
+    static Fn fn = reinterpret_cast<Fn>(pk_libc_sym("__system_property_privacykit_seal"));
+    if (fn) fn();
+}
+}  // namespace
+
 namespace android {
 namespace {
 
@@ -237,6 +267,20 @@ void SystemProperties_report_sysprop_change(JNIEnv /**env*/, jobject /*clazz*/)
     report_sysprop_change();
 }
 
+void SP_setPrivacyKitOverride(JNIEnv* env, jobject clazz, jstring nameJ, jstring valueJ) {
+    if (nameJ == nullptr || valueJ == nullptr) return;
+    ScopedUtfChars name(env, nameJ);
+    ScopedUtfChars value(env, valueJ);
+    if (!name.c_str() || !value.c_str()) {
+        return;
+    }
+    pk_prop_override(name.c_str(), value.c_str());
+}
+
+void SP_sealPrivacyKitOverrides(JNIEnv*, jobject) {
+    pk_prop_seal();
+}
+
 }  // namespace
 
 int register_android_os_SystemProperties(JNIEnv *env)
@@ -269,6 +313,10 @@ int register_android_os_SystemProperties(JNIEnv *env)
           (void*) SystemProperties_add_change_callback },
         { "native_report_sysprop_change", "()V",
           (void*) SystemProperties_report_sysprop_change },
+        { "native_pk_override", "(Ljava/lang/String;Ljava/lang/String;)V",
+          (void*) SP_setPrivacyKitOverride },
+        { "native_pk_seal", "()V",
+          (void*) SP_sealPrivacyKitOverrides },
     };
     return RegisterMethodsOrDie(env, "android/os/SystemProperties",
                                 method_table, NELEM(method_table));

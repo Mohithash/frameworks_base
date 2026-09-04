@@ -169,6 +169,7 @@ import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.os.TelephonyServiceManager;
 import android.os.Trace;
+import android.privacykit.PrivacyKitIdentityInjector;
 import android.os.UserHandle;
 import android.os.UserManager;
 import android.os.instrumentation.ExecutableMethodFileOffsets;
@@ -1607,6 +1608,8 @@ public final class ActivityThread extends ClientTransactionHandler
         @Override
         public void updateTimeZone() {
             TimeZone.setDefault(null);
+            // PrivacyKit-Native: setDefault(null) drops any per-app zone.
+            PrivacyKitIdentityInjector.reapplyTimeZoneOverride();
         }
 
         @Override
@@ -8072,6 +8075,9 @@ public final class ActivityThread extends ClientTransactionHandler
 
         VMDebug.setUserId(UserHandle.myUserId());
         VMDebug.addApplication(data.appInfo.packageName);
+        // PrivacyKit-Native: install this app's spoofed identity before any
+        // of its code runs, so Build.* never reads the real values.
+        PrivacyKitIdentityInjector.maybeApply(data.appInfo.packageName);
         // send up app name; do this *before* waiting for debugger
         Process.setArgV0(data.processName);
         android.ddm.DdmHandleAppName.setAppName(data.processName,
@@ -8218,6 +8224,7 @@ public final class ActivityThread extends ClientTransactionHandler
         final IActivityManager mgr = ActivityManager.getService();
         final ContextImpl appContext = ContextImpl.createAppContext(this, data.info);
         mConfigurationController.updateLocaleListFromAppContext(appContext);
+        PrivacyKitIdentityInjector.maybeApplyLocaleAndTimeZone(data.appInfo.packageName);
 
         GamePropsSpoofService gamePropsService = GamePropsSpoofService.getInstance();
         if (gamePropsService.isEnabled()) {

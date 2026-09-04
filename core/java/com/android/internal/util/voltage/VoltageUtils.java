@@ -121,6 +121,32 @@ import static android.provider.Settings.Global.ZEN_MODE_OFF;
 public class VoltageUtils {
 
     /**
+     * Package names of every app that exposes a LAUNCHER activity.
+     *
+     * PrivacyKit-Native: added for the PrivacyKit Settings UI, which is the only
+     * caller. The upstream BestROM patch supplied this by REPLACING this class
+     * with a 40-line version, on the grounds that the full class did not compile
+     * on the LineageOS-based A17 framework it was written against. On VoltageOS
+     * this class is native and compiles, so the method is added here instead of
+     * discarding the other ~1150 lines.
+     *
+     * @hide
+     */
+    public static List<String> launchablePackages(Context context) {
+        List<String> list = new ArrayList<>();
+        Intent filter = new Intent(Intent.ACTION_MAIN, null);
+        filter.addCategory(Intent.CATEGORY_LAUNCHER);
+        List<ResolveInfo> apps = context.getPackageManager().queryIntentActivities(filter,
+                PackageManager.GET_META_DATA);
+        int numPackages = apps.size();
+        for (int i = 0; i < numPackages; i++) {
+            ResolveInfo app = apps.get(i);
+            list.add(app.activityInfo.packageName);
+        }
+        return list;
+    }
+
+    /**
      * @hide
      */
     public static final String SYSTEMUI_PACKAGE_NAME = "com.android.systemui";

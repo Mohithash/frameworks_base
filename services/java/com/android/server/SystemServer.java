@@ -260,6 +260,7 @@ import com.android.server.power.hint.HintManagerService;
 import com.android.server.power.thermal.ThermalManagerService;
 import com.android.server.powerstats.PowerStatsService;
 import com.android.server.print.PrintManagerService;
+import com.android.server.privacykit.PrivacyKitService;
 import com.android.server.privatecompute.PccSandboxManagerService;
 import com.android.server.profcollect.ProfcollectForwardingService;
 import com.android.server.recoverysystem.RecoverySystemService;
@@ -2959,6 +2960,14 @@ public final class SystemServer implements Dumpable {
                 mSystemServiceManager.startService(BackgroundInstallControlService.class);
                 t.traceEnd();
             }
+
+            // PrivacyKit-Native: publishes the "privacykit" binder in onStart().
+            // Without this the service never starts and every hook fails open.
+            // HARD REQUIREMENT: the sepolicy lane (a dedicated privacykit_service
+            // type + service_contexts entry) MUST be in this same build.
+            t.traceBegin("StartPrivacyKitService");
+            mSystemServiceManager.startService(PrivacyKitService.class);
+            t.traceEnd();
 
             // LineageHardware
             t.traceBegin("StartLineageHardwareService");
