@@ -370,7 +370,7 @@ public abstract class AppsFilterBase implements AppsFilterSnapshot {
             "com.zachspong.temprootremovejb",
             "org.lineageos.lineageparts",
             "org.lineageos.settings",
-            "org.lineageos.setupwizard",
+            "org.bestrom.setupwizard",
             "org.lineageos.updater"
     );
 
