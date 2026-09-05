@@ -505,7 +505,7 @@ status_t BootAnimation::initDisplaysAndSurfaces() {
         
         // Apply custom display resolution switch if enabled
         const bool shouldScale =
-                android::base::GetIntProperty("ro.voltage.display.resolution_switch", 0) == TYPE_FORCED &&
+                android::base::GetIntProperty("ro.bestrom.display.resolution_switch", 0) == TYPE_FORCED &&
                 android::base::GetIntProperty("persist.sys.voltage.bootanimation.scale", 0) == 1;
         if (shouldScale) {
             resolution.width = (int) (resolution.width * 0.75f);
@@ -686,7 +686,7 @@ bool BootAnimation::findBootAnimationFileInternal(const std::vector<std::string>
 void BootAnimation::findBootAnimationFile() {
     ATRACE_CALL();
     const bool shouldScale =
-            android::base::GetIntProperty("ro.voltage.display.resolution_switch", 0) == TYPE_FORCED &&
+            android::base::GetIntProperty("ro.bestrom.display.resolution_switch", 0) == TYPE_FORCED &&
             android::base::GetIntProperty("persist.sys.voltage.bootanimation.scale", 0) == 1;
     const std::string productBootanimationFile = PRODUCT_BOOTANIMATION_DIR +
         android::base::GetProperty("ro.product.bootanim.file", shouldScale ?
