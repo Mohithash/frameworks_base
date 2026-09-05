@@ -24,7 +24,7 @@ public class DisplayResolutionManager {
     public static final int TYPE_FORCED = 3;
 
     private static final int DEVICE_TYPE =
-            SystemProperties.getInt("ro.voltage.display.resolution_switch", TYPE_DISABLED);
+            SystemProperties.getInt("ro.bestrom.display.resolution_switch", TYPE_DISABLED);
 
     public static final boolean RESTART_SYSTEMUI_ON_SWITCH =
             SystemProperties.getBoolean("persist.sys.voltage.resolution.restart_sysui", false);
