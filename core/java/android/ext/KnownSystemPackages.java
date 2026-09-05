@@ -38,7 +38,7 @@ public final class KnownSystemPackages {
         mediaProvider = "com.android.providers.media.module";
         permissionController = "com.android.permissioncontroller";
         settings = "com.android.settings";
-        setupWizard = "org.lineageos.setupwizard";
+        setupWizard = "org.bestrom.setupwizard";
         shell = "com.android.shell";
         systemUi = res.getString(R.string.config_systemUi);
     }
