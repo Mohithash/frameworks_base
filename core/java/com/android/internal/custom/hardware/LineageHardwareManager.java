@@ -40,12 +40,12 @@ import vendor.lineage.livedisplay.IDisplayModes;
 import vendor.lineage.livedisplay.IPictureAdjustment;
 import vendor.lineage.livedisplay.IReadingEnhancement;
 import vendor.lineage.livedisplay.ISunlightEnhancement;
-import vendor.lineage.touch.IGloveMode;
-import vendor.lineage.touch.IHighTouchPollingRate;
-import vendor.lineage.touch.IKeyDisabler;
-import vendor.lineage.touch.IKeySwapper;
-import vendor.lineage.touch.IStylusMode;
-import vendor.lineage.touch.ITouchscreenGesture;
+import vendor.bestrom.touch.IGloveMode;
+import vendor.bestrom.touch.IHighTouchPollingRate;
+import vendor.bestrom.touch.IKeyDisabler;
+import vendor.bestrom.touch.IKeySwapper;
+import vendor.bestrom.touch.IStylusMode;
+import vendor.bestrom.touch.ITouchscreenGesture;
 
 import java.io.UnsupportedEncodingException;
 import java.lang.IllegalArgumentException;

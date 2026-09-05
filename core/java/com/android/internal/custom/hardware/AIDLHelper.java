@@ -48,18 +48,18 @@ class AIDLHelper {
     }
 
     static TouchscreenGesture[] fromAIDLGestures(
-            vendor.lineage.touch.Gesture[] gestures) {
+            vendor.bestrom.touch.Gesture[] gestures) {
         int size = gestures.length;
         TouchscreenGesture[] r = new TouchscreenGesture[size];
         for (int i = 0; i < size; i++) {
-            vendor.lineage.touch.Gesture g = gestures[i];
+            vendor.bestrom.touch.Gesture g = gestures[i];
             r[i] = new TouchscreenGesture(g.id, g.name, g.keycode);
         }
         return r;
     }
 
-    static vendor.lineage.touch.Gesture toAIDLGesture(TouchscreenGesture gesture) {
-        vendor.lineage.touch.Gesture g = new vendor.lineage.touch.Gesture();
+    static vendor.bestrom.touch.Gesture toAIDLGesture(TouchscreenGesture gesture) {
+        vendor.bestrom.touch.Gesture g = new vendor.bestrom.touch.Gesture();
         g.id = gesture.id;
         g.name = gesture.name;
         g.keycode = gesture.keycode;
