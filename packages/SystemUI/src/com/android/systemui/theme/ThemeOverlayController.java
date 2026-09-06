@@ -173,22 +173,13 @@ public class ThemeOverlayController implements CoreStartable, Dumpable {
     // Theme variant: Vibrant, Tonal, Expressive, etc
     @VisibleForTesting
     @ThemeStyle.Type
-    protected int mThemeStyle = ThemeStyle.MONOCHROMATIC;
+    protected int mThemeStyle = ThemeStyle.TONAL_SPOT;
     // Accent colors overlay
     private FabricatedOverlay mAccentOverlay;
     // Neutral system colors overlay
     private FabricatedOverlay mNeutralOverlay;
     // Dynamic colors overlay
     private FabricatedOverlay mDynamicOverlay;
-
-    /**
-     * BestROM black theme: when set (default on), the dark variants of the Material surface
-     * roles are forced to true black / near-black instead of the tonal greys Material You
-     * generates. Only the *_dark resources are touched, so light mode is unaffected.
-     * Secure setting "system_black_theme" (1 = on) can turn it off.
-     */
-    private static final String BLACK_THEME_SETTING = "system_black_theme";
-    private boolean mIsBlackTheme = true;
     // If wallpaper color event will be accepted and change the UI colors.
     private boolean mAcceptColorEvents = true;
     // If non-null (per user), colors that were sent to the framework, and processing was deferred
@@ -735,8 +726,6 @@ public class ThemeOverlayController implements CoreStartable, Dumpable {
         mLightColorScheme = new ColorScheme(color, false /* isDark */, mThemeStyle, mContrast,
                 luminanceFactor, chromaFactor, wholePalette, tintBg, bgColor);
         mColorScheme = isNightMode() ? mDarkColorScheme : mLightColorScheme;
-        mIsBlackTheme = mSecureSettings.getIntForUser(BLACK_THEME_SETTING, 1,
-                mUserTracker.getUserId()) == 1;
 
         mAccentOverlay = newFabricatedOverlay("accent");
         assignColorsToOverlay(mAccentOverlay,
@@ -789,37 +778,10 @@ public class ThemeOverlayController implements CoreStartable, Dumpable {
                 light = applyFactors(light, luminanceFactor, chromaFactor);
                 dark = applyFactors(dark, luminanceFactor, chromaFactor);
             }
-            if (mIsBlackTheme) {
-                dark = blackThemeSurface(p.first, dark);
-            }
 
             overlay.setResourceValue(prefix + "_light", TYPE_INT_COLOR_ARGB8, light, null);
             overlay.setResourceValue(prefix + "_dark", TYPE_INT_COLOR_ARGB8, dark, null);
         });
-    }
-
-    /** Dark-mode surface roles for the black theme; anything else keeps its generated value. */
-    private static int blackThemeSurface(String role, int generated) {
-        switch (role) {
-            case "background":
-            case "surface":
-            case "surface_container":
-                return 0xFF000000;
-            case "surface_container_lowest":
-                return 0xFF080808;
-            case "surface_dim":
-                return 0xFF0C0C0C;
-            case "surface_container_low":
-                return 0xFF0F0F0F;
-            case "surface_container_high":
-                return 0xFF171717;
-            case "surface_container_highest":
-                return 0xFF1B1B1B;
-            case "surface_bright":
-                return 0xFF212121;
-            default:
-                return generated;
-        }
     }
 
     private static int applyFactors(int argb, float luminanceFactor, float chromaFactor) {
@@ -1012,11 +974,11 @@ public class ThemeOverlayController implements CoreStartable, Dumpable {
                 style = ThemeStyle.valueOf(
                         object.getString(OVERLAY_CATEGORY_THEME_STYLE));
                 if (!validStyles.contains(style)) {
-                    style = ThemeStyle.MONOCHROMATIC;
+                    style = ThemeStyle.TONAL_SPOT;
                 }
             } catch (JSONException | IllegalArgumentException e) {
                 Log.i(TAG, "Failed to parse THEME_CUSTOMIZATION_OVERLAY_PACKAGES.", e);
-                style = ThemeStyle.MONOCHROMATIC;
+                style = ThemeStyle.TONAL_SPOT;
             }
         }
         return style;
