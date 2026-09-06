@@ -371,6 +371,16 @@ public class TrickyStoreService {
     }
 
     private void checkKeyboxRevocation(String xml) {
+        // This service is instantiated in whichever app process requests key
+        // attestation, so without a gate every such app (a bank app included)
+        // would open its own connection to googleapis.com, and apps without
+        // INTERNET would just log an exception. Only the Google processes,
+        // which talk to Google constantly anyway, run the check.
+        final String pkg = android.app.ActivityThread.currentPackageName();
+        if (pkg == null
+                || !(pkg.equals("com.google.android.gms") || pkg.equals("com.android.vending"))) {
+            return;
+        }
         long now = System.currentTimeMillis();
         if (now - mLastRevocationCheckMs < REVOCATION_CHECK_COOLDOWN_MS) {
             Log.d(TAG, "Skipping revocation check — ran within 24h");
