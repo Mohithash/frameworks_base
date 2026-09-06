@@ -96,8 +96,10 @@ class UdfpsHelper(
         addUpdateListener { animator ->
             view.alpha = animator.animatedValue as Float
             dimLayoutParams.alpha = animator.animatedValue as Float
-            if (view.isAttachedToWindow) {
+            try {
                 windowManager.updateViewLayout(view, dimLayoutParams)
+            } catch (e: IllegalArgumentException) {
+                Log.e(TAG, "View not attached to WindowManager", e)
             }
         }
     }
