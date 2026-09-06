@@ -512,7 +512,7 @@ internal constructor(
         if (playSound && Settings.System.getIntForUser(
                 context.contentResolver,
                 Settings.System.SCREENSHOT_SHUTTER_SOUND,
-                1,
+                0,
                 UserHandle.USER_CURRENT
             ) == 1
         ) {
