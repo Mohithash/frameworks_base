@@ -1058,7 +1058,14 @@ public class UdfpsController implements DozeReceiver, Dumpable {
             if (oldView != null) {
                 onFingerUp(mOverlay.getRequestId(), oldView);
             }
-            final boolean removed = mOverlay.hide();
+            boolean removed = false;
+            try {
+                removed = mOverlay.hide();
+            } catch (IllegalArgumentException e) {
+                // The overlay view can already be detached by a finger-up / bouncer /
+                // display-state race; WindowManager then throws instead of no-op.
+                Log.w(TAG, "hideUdfpsOverlay | view already detached", e);
+            }
             mKeyguardViewManager.hideAlternateBouncer(
                     /* updateScrim */ true,
                     /* clearDismissAction */ false
