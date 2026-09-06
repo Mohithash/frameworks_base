@@ -104,9 +104,9 @@ public class SenseProvider implements ServiceProvider {
 
     private static final String TAG = "SenseProvider";
 
-    private static final String BIND_SENSE_ACTION = "com.voltageos.faceunlock.BIND";
-    private static final String PACKAGE_NAME = "com.voltageos.faceunlock";
-    private static final String SERVICE_NAME = "com.voltageos.faceunlock.SenseService";
+    private static final String BIND_SENSE_ACTION = "com.bestrom.faceunlock.BIND";
+    private static final String PACKAGE_NAME = "com.bestrom.faceunlock";
+    private static final String SERVICE_NAME = "com.bestrom.faceunlock.SenseService";
 
     public static final int DEVICE_ID = 1008;
     private static final int ENROLL_TIMEOUT_SEC = 75;

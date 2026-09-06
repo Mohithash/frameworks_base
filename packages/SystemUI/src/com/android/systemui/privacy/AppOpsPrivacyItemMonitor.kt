@@ -138,7 +138,7 @@ constructor(
                         return
                     }
                     // Hide incoming chip from sense caller package
-                    if (packageName == "com.voltageos.faceunlock") {
+                    if (packageName == "com.bestrom.faceunlock") {
                         return
                     }
                     if (
@@ -398,7 +398,7 @@ constructor(
                 else -> return null
             }
         // Hide incoming chip from sense caller package
-        if (appOpItem.packageName == "com.voltageos.faceunlock") {
+        if (appOpItem.packageName == "com.bestrom.faceunlock") {
             return null
         }
         val app = PrivacyApplication(appOpItem.packageName, appOpItem.uid)
