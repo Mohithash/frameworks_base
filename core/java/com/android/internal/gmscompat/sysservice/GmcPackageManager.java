@@ -221,14 +221,17 @@ public class GmcPackageManager extends ApplicationPackageManager {
         throwIfHidden(versionedPackage.getPackageName());
         flags = filterFlags(flags);
 
-        PackageInfo pdi = makePseudoDisabledPackageInfoOrThrow(versionedPackage.getPackageName(), flags);
-        if (pdi != null) {
+        try {
+            PackageInfo pi = super.getPackageInfo(versionedPackage, flags);
+            maybeAdjustPackageInfo(pi);
+            return pi;
+        } catch (NameNotFoundException e) {
+            PackageInfo pdi = makePseudoDisabledPackageInfoOrThrow(versionedPackage.getPackageName(), flags);
+            if (pdi == null) {
+                throw e;
+            }
             return pdi;
         }
-
-        PackageInfo pi = super.getPackageInfo(versionedPackage, flags);
-        maybeAdjustPackageInfo(pi);
-        return pi;
     }
 
     @Override
@@ -236,26 +239,32 @@ public class GmcPackageManager extends ApplicationPackageManager {
         throwIfHidden(packageName);
         flags = filterFlags(flags);
 
-        PackageInfo pdi = makePseudoDisabledPackageInfoOrThrow(packageName, flags);
-        if (pdi != null) {
+        try {
+            PackageInfo pi = super.getPackageInfoAsUser(packageName, flags, userId);
+            maybeAdjustPackageInfo(pi);
+            return pi;
+        } catch (NameNotFoundException e) {
+            PackageInfo pdi = makePseudoDisabledPackageInfoOrThrow(packageName, flags);
+            if (pdi == null) {
+                throw e;
+            }
             return pdi;
         }
-
-        PackageInfo pi = super.getPackageInfoAsUser(packageName, flags, userId);
-        maybeAdjustPackageInfo(pi);
-        return pi;
     }
 
     @Override
     public ApplicationInfo getApplicationInfoAsUser(String packageName, ApplicationInfoFlags flags, int userId) throws NameNotFoundException {
-        ApplicationInfo adi = makePseudoDisabledApplicationInfoOrThrow(packageName, flags);
-        if (adi != null) {
+        try {
+            ApplicationInfo ai = super.getApplicationInfoAsUser(packageName, flags, userId);
+            maybeAdjustApplicationInfo(ai);
+            return ai;
+        } catch (NameNotFoundException e) {
+            ApplicationInfo adi = makePseudoDisabledApplicationInfoOrThrow(packageName, flags);
+            if (adi == null) {
+                throw e;
+            }
             return adi;
         }
-
-        ApplicationInfo ai = super.getApplicationInfoAsUser(packageName, flags, userId);
-        maybeAdjustApplicationInfo(ai);
-        return ai;
     }
 
     @Override
