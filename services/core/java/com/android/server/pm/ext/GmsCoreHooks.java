@@ -20,6 +20,8 @@ import com.android.internal.pm.pkg.parsing.ParsingPackage;
 import com.android.server.LocalServices;
 
 import java.util.List;
+import android.service.credentials.CredentialProviderService;
+import com.android.internal.pm.pkg.component.ParsedIntentInfo;
 
 class GmsCoreHooks extends PackageHooks {
 
@@ -52,6 +54,24 @@ class GmsCoreHooks extends PackageHooks {
     }
 
     static class ParsingHooks extends GmsCompatPkgParsingHooks {
+        @Override
+        public void amendParsedService(ParsedServiceImpl s) {
+            super.amendParsedService(s);
+
+            // GmsCore declares its credential provider with
+            // CredentialProviderService.SYSTEM_SERVICE_INTERFACE, which CredentialManager
+            // honours only for preinstalled providers. Sandboxed GmsCore is a regular app,
+            // so rewrite it to the ordinary action; otherwise Google Password Manager and
+            // passkeys never appear as a provider. (GrapheneOS ce631ecf9668)
+            if (android.Manifest.permission.BIND_CREDENTIAL_PROVIDER_SERVICE.equals(s.getPermission())) {
+                for (ParsedIntentInfo intentInfo : s.getIntents()) {
+                    intentInfo.getIntentFilter().replaceAction(
+                            CredentialProviderService.SYSTEM_SERVICE_INTERFACE,
+                            CredentialProviderService.SERVICE_INTERFACE);
+                }
+            }
+        }
+
 
         @Override
         public boolean shouldSkipPermissionDefinition(ParsedPermission p) {
