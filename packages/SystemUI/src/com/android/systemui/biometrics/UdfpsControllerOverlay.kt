@@ -345,11 +345,7 @@ constructor(
                 if (Build.IS_DEBUGGABLE) {
                     Log.d(TAG, "removing view=$this")
                 }
-                try {
-                    windowManager.removeView(this)
-                } catch (e: IllegalArgumentException) {
-                    Log.w(TAG, "removeView | view was already detached", e)
-                }
+                windowManager.removeView(this)
             }
             Trace.setCounter("UdfpsAddView", 0)
             setOnTouchListener(null)
