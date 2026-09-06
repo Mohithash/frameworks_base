@@ -52,6 +52,10 @@ public class TrickyStoreService {
     private volatile Boolean mTeeBroken = null;
     private volatile long mLastRevocationCheckMs = 0L;
     private static final long REVOCATION_CHECK_COOLDOWN_MS = 24 * 60 * 60 * 1000L;
+    // refreshTargets() is a cross-process AMS binder call; needHack()/needGenerate()
+    // run on every attestation check, so throttle it to once per 5 s.
+    private volatile long mLastTargetsRefreshMs = 0L;
+    private static final long TARGETS_REFRESH_COOLDOWN_MS = 5_000L;
     private volatile CustomPatchLevel mCustomPatchLevel = null;
     private volatile String mLastKeyboxFingerprint = null;
 
@@ -469,9 +473,17 @@ public class TrickyStoreService {
         }
     }
 
+    private void maybeRefreshTargets() {
+        long now = System.currentTimeMillis();
+        if (now - mLastTargetsRefreshMs >= TARGETS_REFRESH_COOLDOWN_MS) {
+            mLastTargetsRefreshMs = now;
+            refreshTargets();
+        }
+    }
+
     public boolean needHack(int callingUid, String[] packages) {
         if (packages == null) return false;
-        refreshTargets();
+        maybeRefreshTargets();
         ensureTeeStatus();
         for (String pkg : packages) {
             Mode mode = mPackageModes.get(pkg);
@@ -483,7 +495,7 @@ public class TrickyStoreService {
 
     public boolean needGenerate(int callingUid, String[] packages) {
         if (packages == null) return false;
-        refreshTargets();
+        maybeRefreshTargets();
         ensureTeeStatus();
         for (String pkg : packages) {
             Mode mode = mPackageModes.get(pkg);
