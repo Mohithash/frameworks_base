@@ -22,6 +22,7 @@ import android.annotation.SystemApi;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.ravenwood.annotation.RavenwoodKeepWholeClass;
 import android.security.pif.PlayIntegritySpoofService;
+import com.android.internal.util.voltage.HideDeveloperStatusUtils;
 import android.util.Log;
 import android.util.MutableInt;
 
@@ -154,6 +155,8 @@ public class SystemProperties {
     @SystemApi
     public static String get(@NonNull String key) {
         if (TRACK_KEY_ACCESS) onKeyAccess(key);
+        String devSpoofed = HideDeveloperStatusUtils.getSpoofedProperty(key);
+        if (devSpoofed != null) return devSpoofed;
         if (PlayIntegritySpoofService.isSpoofPropsForProcess()) {
             final PlayIntegritySpoofService pif = PlayIntegritySpoofService.peekInstance();
             String spoofed = (pif == null) ? null : pif.getSpoofedProperty(key);
@@ -175,6 +178,8 @@ public class SystemProperties {
     @SystemApi
     public static String get(@NonNull String key, @Nullable String def) {
         if (TRACK_KEY_ACCESS) onKeyAccess(key);
+        String devSpoofed = HideDeveloperStatusUtils.getSpoofedProperty(key);
+        if (devSpoofed != null) return devSpoofed;
         if (PlayIntegritySpoofService.isSpoofPropsForProcess()) {
             final PlayIntegritySpoofService pif = PlayIntegritySpoofService.peekInstance();
             String spoofed = (pif == null) ? null : pif.getSpoofedProperty(key);

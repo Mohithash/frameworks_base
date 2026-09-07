@@ -199,6 +199,7 @@ import android.security.NetworkSecurityPolicy;
 import android.security.net.config.NetworkSecurityConfigProvider;
 import android.security.gameprops.GamePropsSpoofService;
 import android.security.pif.PlayIntegritySpoofService;
+import com.android.internal.util.voltage.HideDeveloperStatusUtils;
 import android.system.ErrnoException;
 import android.telephony.TelephonyFrameworkInitializer;
 import android.util.AndroidRuntimeException;
@@ -8243,6 +8244,10 @@ public final class ActivityThread extends ClientTransactionHandler
         if (pifService.shouldSpoofPhotos(data.appInfo.packageName)) {
             pifService.spoofPhotosProps();
         }
+
+        HideDeveloperStatusUtils.setHideForProcess(
+                HideDeveloperStatusUtils.shouldHideDevStatus(
+                        appContext.getContentResolver(), data.appInfo.packageName, "adb_enabled"));
 
         // Initialize the default http proxy in this process.
         Trace.traceBegin(Trace.TRACE_TAG_ACTIVITY_MANAGER, "Setup proxies");

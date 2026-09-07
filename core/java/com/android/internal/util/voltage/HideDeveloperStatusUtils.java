@@ -22,7 +22,9 @@ import android.content.Context;
 import android.provider.Settings;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -33,6 +35,25 @@ import java.util.Set;
  * the disabled/default value for all of them rather than the real one.
  */
 public class HideDeveloperStatusUtils {
+
+    private static volatile boolean sHideForProcess;
+
+    private static final Map<String, String> PROP_SPOOFS;
+    static {
+        PROP_SPOOFS = new HashMap<>();
+        PROP_SPOOFS.put("persist.sys.usb.config", "mtp");
+        PROP_SPOOFS.put("sys.usb.config", "mtp");
+        PROP_SPOOFS.put("init.svc.adbd", "stopped");
+    }
+
+    public static void setHideForProcess(boolean enabled) {
+        sHideForProcess = enabled;
+    }
+
+    public static String getSpoofedProperty(String key) {
+        if (!sHideForProcess) return null;
+        return PROP_SPOOFS.get(key);
+    }
 
     private static final Set<String> settingsToHide = new HashSet<>(Arrays.asList(
             Settings.Global.ADB_ENABLED,
