@@ -14880,6 +14880,13 @@ public final class Settings {
         public static final String HIDE_APPLIST = "hide_applist";
 
         /**
+         * Per-app hiding of developer/debug status signals (ADB, dev options).
+         * @hide
+         */
+        @Readable
+        public static final String HIDE_DEVELOPER_STATUS = "hide_developer_status";
+
+        /**
          * Whether to show or hide the arrow for back gesture
          * @hide
          */
