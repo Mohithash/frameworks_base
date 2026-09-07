@@ -155,7 +155,8 @@ public class SystemProperties {
     public static String get(@NonNull String key) {
         if (TRACK_KEY_ACCESS) onKeyAccess(key);
         if (PlayIntegritySpoofService.isSpoofPropsForProcess()) {
-            String spoofed = PlayIntegritySpoofService.getInstance().getSpoofedProperty(key);
+            final PlayIntegritySpoofService pif = PlayIntegritySpoofService.peekInstance();
+            String spoofed = (pif == null) ? null : pif.getSpoofedProperty(key);
             if (spoofed != null) return spoofed;
         }
         return native_get(key);
@@ -175,9 +176,12 @@ public class SystemProperties {
     public static String get(@NonNull String key, @Nullable String def) {
         if (TRACK_KEY_ACCESS) onKeyAccess(key);
         if (PlayIntegritySpoofService.isSpoofPropsForProcess()) {
-            String spoofed = PlayIntegritySpoofService.getInstance().getSpoofedProperty(key);
+            final PlayIntegritySpoofService pif = PlayIntegritySpoofService.peekInstance();
+            String spoofed = (pif == null) ? null : pif.getSpoofedProperty(key);
             if (spoofed != null) {
-                Log.v(TAG, "PIF spoofed prop: " + key + " -> " + spoofed);
+                if (pif.getVerboseLogs() > 0) {
+                    Log.v(TAG, "PIF spoofed prop: " + key + " -> " + spoofed);
+                }
                 return spoofed;
             }
         }
@@ -197,7 +201,8 @@ public class SystemProperties {
     public static int getInt(@NonNull String key, int def) {
         if (TRACK_KEY_ACCESS) onKeyAccess(key);
         if (PlayIntegritySpoofService.isSpoofPropsForProcess()) {
-            String spoofed = PlayIntegritySpoofService.getInstance().getSpoofedProperty(key);
+            final PlayIntegritySpoofService pif = PlayIntegritySpoofService.peekInstance();
+            String spoofed = (pif == null) ? null : pif.getSpoofedProperty(key);
             if (spoofed != null) {
                 try {
                     return Integer.parseInt(spoofed);
@@ -221,7 +226,8 @@ public class SystemProperties {
     public static long getLong(@NonNull String key, long def) {
         if (TRACK_KEY_ACCESS) onKeyAccess(key);
         if (PlayIntegritySpoofService.isSpoofPropsForProcess()) {
-            String spoofed = PlayIntegritySpoofService.getInstance().getSpoofedProperty(key);
+            final PlayIntegritySpoofService pif = PlayIntegritySpoofService.peekInstance();
+            String spoofed = (pif == null) ? null : pif.getSpoofedProperty(key);
             if (spoofed != null) {
                 try {
                     return Long.parseLong(spoofed);
@@ -250,7 +256,8 @@ public class SystemProperties {
     public static boolean getBoolean(@NonNull String key, boolean def) {
         if (TRACK_KEY_ACCESS) onKeyAccess(key);
         if (PlayIntegritySpoofService.isSpoofPropsForProcess()) {
-            String spoofed = PlayIntegritySpoofService.getInstance().getSpoofedProperty(key);
+            final PlayIntegritySpoofService pif = PlayIntegritySpoofService.peekInstance();
+            String spoofed = (pif == null) ? null : pif.getSpoofedProperty(key);
             if (spoofed != null) {
                 return "1".equals(spoofed) || "true".equalsIgnoreCase(spoofed);
             }
@@ -429,7 +436,8 @@ public class SystemProperties {
          */
         @NonNull public String get() {
             if (PlayIntegritySpoofService.isSpoofPropsForProcess()) {
-                String spoofed = PlayIntegritySpoofService.getInstance().getSpoofedProperty(mKey);
+                final PlayIntegritySpoofService pif = PlayIntegritySpoofService.peekInstance();
+                String spoofed = (pif == null) ? null : pif.getSpoofedProperty(mKey);
                 if (spoofed != null) return spoofed;
             }
             return native_get(mNativeHandle);
@@ -440,7 +448,8 @@ public class SystemProperties {
          */
         public int getInt(int def) {
             if (PlayIntegritySpoofService.isSpoofPropsForProcess()) {
-                String spoofed = PlayIntegritySpoofService.getInstance().getSpoofedProperty(mKey);
+                final PlayIntegritySpoofService pif = PlayIntegritySpoofService.peekInstance();
+                String spoofed = (pif == null) ? null : pif.getSpoofedProperty(mKey);
                 if (spoofed != null) {
                     try {
                         return Integer.parseInt(spoofed);
@@ -456,7 +465,8 @@ public class SystemProperties {
          */
         public long getLong(long def) {
             if (PlayIntegritySpoofService.isSpoofPropsForProcess()) {
-                String spoofed = PlayIntegritySpoofService.getInstance().getSpoofedProperty(mKey);
+                final PlayIntegritySpoofService pif = PlayIntegritySpoofService.peekInstance();
+                String spoofed = (pif == null) ? null : pif.getSpoofedProperty(mKey);
                 if (spoofed != null) {
                     try {
                         return Long.parseLong(spoofed);
@@ -472,7 +482,8 @@ public class SystemProperties {
          */
         public boolean getBoolean(boolean def) {
             if (PlayIntegritySpoofService.isSpoofPropsForProcess()) {
-                String spoofed = PlayIntegritySpoofService.getInstance().getSpoofedProperty(mKey);
+                final PlayIntegritySpoofService pif = PlayIntegritySpoofService.peekInstance();
+                String spoofed = (pif == null) ? null : pif.getSpoofedProperty(mKey);
                 if (spoofed != null) {
                     return "1".equals(spoofed) || "true".equalsIgnoreCase(spoofed);
                 }

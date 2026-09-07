@@ -21,7 +21,9 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -146,7 +148,7 @@ public final class PlayIntegritySpoofService {
             "cetYeQvVSqeEmQluWfcunQn9C9Vwi2BJIiVJh4IdWZf5/e2PlSSQ9CJjz2bKI17pzdxOmjQfE0JS" +
             "F7Xt";
 
-    private static PlayIntegritySpoofService sInstance;
+    private static volatile PlayIntegritySpoofService sInstance;
 
     private static native void setFieldNative(Class<?> targetClass,
             java.lang.reflect.Field field, String type, Object value);
@@ -163,6 +165,12 @@ public final class PlayIntegritySpoofService {
 
     private final Map<String, String> mBuildFields = new ConcurrentHashMap<>();
     private final Map<String, String> mSystemProps = new ConcurrentHashMap<>();
+
+    // Precomputed {suffix, value} pairs for keys written as "*.suffix"; empty in the
+    // common case. getSpoofedProperty() is on the hot path of every SystemProperties
+    // read inside the spoofed processes, so the wildcard scan must not walk the whole
+    // prop map on each miss.
+    private volatile List<String[]> mWildcardProps = Collections.emptyList();
 
     private volatile boolean mConfigLoaded = false;
     private volatile boolean mSignatureSpoofed = false;
@@ -188,6 +196,16 @@ public final class PlayIntegritySpoofService {
 
     public static boolean isSpoofPropsForProcess() {
         return sSpoofPropsForProcess;
+    }
+
+    /**
+     * Lock-free accessor for the SystemProperties hot path. Unlike getInstance() this
+     * takes no monitor and never loads config; it returns null until ActivityThread has
+     * built the instance, which always happens before sSpoofPropsForProcess is set.
+     * @hide
+     */
+    public static PlayIntegritySpoofService peekInstance() {
+        return sInstance;
     }
 
     private void ensureLoaded() {
@@ -245,6 +263,7 @@ public final class PlayIntegritySpoofService {
         if (content == null || content.isEmpty()) {
             mBuildFields.clear();
             mSystemProps.clear();
+            mWildcardProps = Collections.emptyList();
             mConfigLoaded = false;
             if (mVerboseLogs > 0) Log.w(TAG, "No PIF config in Settings.Secure");
             return;
@@ -279,6 +298,16 @@ public final class PlayIntegritySpoofService {
                 mSystemProps.put("ro.system.build.version.security_patch", secPatch);
                 mSystemProps.put("ro.product.build.version.security_patch", secPatch);
             }
+
+            List<String[]> wildcards = null;
+            for (Map.Entry<String, String> e : mSystemProps.entrySet()) {
+                String k = e.getKey();
+                if (k.startsWith("*")) {
+                    if (wildcards == null) wildcards = new ArrayList<>();
+                    wildcards.add(new String[] { k.substring(1), e.getValue() });
+                }
+            }
+            mWildcardProps = (wildcards == null) ? Collections.emptyList() : wildcards;
         } catch (Throwable e) {
             Log.e(TAG, "Failed to load PIF config", e);
         }
@@ -588,11 +617,10 @@ public final class PlayIntegritySpoofService {
         String value = mSystemProps.get(key);
         if (value != null) return value;
 
-        for (Map.Entry<String, String> entry : mSystemProps.entrySet()) {
-            String pattern = entry.getKey();
-            if (pattern.startsWith("*") && key.endsWith(pattern.substring(1))) {
-                return entry.getValue();
-            }
+        final List<String[]> wildcards = mWildcardProps;
+        for (int i = 0, n = wildcards.size(); i < n; i++) {
+            final String[] w = wildcards.get(i);
+            if (key.endsWith(w[0])) return w[1];
         }
 
         return null;
