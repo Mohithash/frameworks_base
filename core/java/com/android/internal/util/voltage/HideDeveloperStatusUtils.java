@@ -82,7 +82,7 @@ public class HideDeveloperStatusUtils {
         }
 
         try {
-            String apps = Settings.Secure.getString(cr, "hide_developer_status");
+            String apps = Settings.Secure.getString(cr, Settings.Secure.HIDE_DEVELOPER_STATUS);
             if (apps != null && !apps.isEmpty() && !apps.equals(",")) {
                 return new HashSet<>(Arrays.asList(apps.split(",")));
             }
@@ -113,7 +113,7 @@ public class HideDeveloperStatusUtils {
 
         Settings.Secure.putStringForUser(
                 context.getContentResolver(),
-                "hide_developer_status",
+                Settings.Secure.HIDE_DEVELOPER_STATUS,
                 String.join(",", apps),
                 userId);
     }

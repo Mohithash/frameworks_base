@@ -133,6 +133,7 @@ import com.android.internal.display.BrightnessUtils;
 import com.android.internal.display.RefreshRateSettingsUtils;
 import com.android.internal.os.BackgroundThread;
 import com.android.internal.util.FrameworkStatsLog;
+import com.android.internal.util.voltage.HideDeveloperStatusUtils;
 import com.android.providers.settings.SettingsState.Setting;
 
 import com.google.android.collect.Sets;
@@ -484,6 +485,10 @@ public class SettingsProvider extends ContentProvider {
             }
             case Settings.CALL_METHOD_GET_GLOBAL -> {
                 Setting setting = getGlobalSetting(name);
+                if (HideDeveloperStatusUtils.shouldHideDevStatus(
+                        getContext().getContentResolver(), getCallingPackage(), name)) {
+                    return Bundle.forPair(Settings.NameValueTable.VALUE, "0");
+                }
                 // Global settings are applicable only for the default device, hence pass
                 // Context.DEVICE_ID_DEFAULT as the deviceId.
                 return packageValueForCallResult(SETTINGS_TYPE_GLOBAL, name, requestingUserId,
@@ -491,6 +496,10 @@ public class SettingsProvider extends ContentProvider {
             }
             case Settings.CALL_METHOD_GET_SECURE -> {
                 Setting setting = getSecureSetting(name, requestingUserId, callingDeviceId);
+                if (HideDeveloperStatusUtils.shouldHideDevStatus(
+                        getContext().getContentResolver(), getCallingPackage(), name)) {
+                    return Bundle.forPair(Settings.NameValueTable.VALUE, "0");
+                }
                 // If any overridden setting is not available for a virtual device, return the
                 // setting corresponding to the default device.
                 if (callingDeviceId != Context.DEVICE_ID_DEFAULT
