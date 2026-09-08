@@ -99,6 +99,17 @@ sealed class BatteryViewModel(
 
     val attribution: BatteryGlyph? by attributionGlyph.hydratedStateOf(initialValue = null)
 
+    /**
+     * The text-only battery style draws no icon, so the charging attribution has nowhere to go.
+     * Show a standalone bolt beside the percent whenever the icon styles would draw one, so that
+     * both styles agree about when the device is charging.
+     */
+    val shouldShowBoltInTextMode: Boolean by
+        combine(interactor.batteryIconStyle, attributionGlyph) { style, glyph ->
+                style == BatteryRepository.ICON_STYLE_TEXT && glyph == BatteryGlyph.Bolt
+            }
+            .hydratedStateOf(traceName = "shouldShowBoltInTextMode", initialValue = false)
+
     private val _colorProfile: Flow<ColorProfile> =
         combine(interactor.batteryAttributionType, interactor.isCritical) { attr, isCritical ->
             when (attr) {
