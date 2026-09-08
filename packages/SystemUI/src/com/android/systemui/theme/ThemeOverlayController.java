@@ -173,13 +173,25 @@ public class ThemeOverlayController implements CoreStartable, Dumpable {
     // Theme variant: Vibrant, Tonal, Expressive, etc
     @VisibleForTesting
     @ThemeStyle.Type
-    protected int mThemeStyle = ThemeStyle.TONAL_SPOT;
+    protected int mThemeStyle = ThemeStyle.MONOCHROMATIC;
     // Accent colors overlay
     private FabricatedOverlay mAccentOverlay;
     // Neutral system colors overlay
     private FabricatedOverlay mNeutralOverlay;
     // Dynamic colors overlay
     private FabricatedOverlay mDynamicOverlay;
+
+    /**
+     * Pure black: when Settings.Secure.BERRY_BLACK_THEME is set, the dark variants of the
+     * Material surface roles are forced to black instead of the tonal greys Material You
+     * generates. Only the *_dark resources are touched, so light mode is unaffected. This is
+     * the same switch Settings already shows under Dark theme ("Pure black") and the same one
+     * ThemeOverlayApplier uses to swap in the black system_palette overlay - the fabricated
+     * dynamic overlay is registered later than that overlay and therefore outranks it, so the
+     * Material roles have to be answered here as well or the switch only reaches the neutral
+     * palette.
+     */
+    private boolean mIsBlackTheme;
     // If wallpaper color event will be accepted and change the UI colors.
     private boolean mAcceptColorEvents = true;
     // If non-null (per user), colors that were sent to the framework, and processing was deferred
@@ -726,6 +738,8 @@ public class ThemeOverlayController implements CoreStartable, Dumpable {
         mLightColorScheme = new ColorScheme(color, false /* isDark */, mThemeStyle, mContrast,
                 luminanceFactor, chromaFactor, wholePalette, tintBg, bgColor);
         mColorScheme = isNightMode() ? mDarkColorScheme : mLightColorScheme;
+        mIsBlackTheme = mSecureSettings.getIntForUser(Settings.Secure.BERRY_BLACK_THEME, 0,
+                mUserTracker.getUserId()) == 1;
 
         mAccentOverlay = newFabricatedOverlay("accent");
         assignColorsToOverlay(mAccentOverlay,
@@ -778,10 +792,45 @@ public class ThemeOverlayController implements CoreStartable, Dumpable {
                 light = applyFactors(light, luminanceFactor, chromaFactor);
                 dark = applyFactors(dark, luminanceFactor, chromaFactor);
             }
+            if (mIsBlackTheme) {
+                dark = blackThemeSurface(p.first, dark);
+            }
 
             overlay.setResourceValue(prefix + "_light", TYPE_INT_COLOR_ARGB8, light, null);
             overlay.setResourceValue(prefix + "_dark", TYPE_INT_COLOR_ARGB8, dark, null);
         });
+    }
+
+    /**
+     * Dark-mode surface roles for the black theme; anything else keeps its generated value.
+     *
+     * The ramp has to stay monotonic and every container has to stay above the page, or the
+     * card systems built on these roles collapse: Settings paints its preference cards with
+     * surface_container over a page of surface_container (home) or surface_container_high
+     * (sub-pages), and the volume and SystemUI dialogs use surface_container too. Black page,
+     * black card is an invisible card.
+     */
+    private static int blackThemeSurface(String role, int generated) {
+        switch (role) {
+            case "background":
+            case "surface":
+            case "surface_container_lowest":
+                return 0xFF000000;
+            case "surface_dim":
+                return 0xFF080808;
+            case "surface_container_low":
+                return 0xFF0C0C0C;
+            case "surface_container":
+                return 0xFF101010;
+            case "surface_container_high":
+                return 0xFF171717;
+            case "surface_container_highest":
+                return 0xFF1B1B1B;
+            case "surface_bright":
+                return 0xFF212121;
+            default:
+                return generated;
+        }
     }
 
     private static int applyFactors(int argb, float luminanceFactor, float chromaFactor) {
@@ -974,11 +1023,11 @@ public class ThemeOverlayController implements CoreStartable, Dumpable {
                 style = ThemeStyle.valueOf(
                         object.getString(OVERLAY_CATEGORY_THEME_STYLE));
                 if (!validStyles.contains(style)) {
-                    style = ThemeStyle.TONAL_SPOT;
+                    style = ThemeStyle.MONOCHROMATIC;
                 }
             } catch (JSONException | IllegalArgumentException e) {
                 Log.i(TAG, "Failed to parse THEME_CUSTOMIZATION_OVERLAY_PACKAGES.", e);
-                style = ThemeStyle.TONAL_SPOT;
+                style = ThemeStyle.MONOCHROMATIC;
             }
         }
         return style;
