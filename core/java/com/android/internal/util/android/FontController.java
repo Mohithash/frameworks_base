@@ -27,7 +27,6 @@ import com.android.internal.R;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.regex.Pattern;
 import java.util.Set;
 
 public class FontController {
@@ -157,6 +156,17 @@ public class FontController {
         return sFontFamily;
     }
 
+    /**
+     * True when {@code name} is {@code root} itself or one of its "root-variant" aliases
+     * (sans-serif / sans-serif-medium). Replaces a per-call String.matches(), which compiled
+     * a fresh Pattern on every Typeface.create(String, int); this path runs in every app
+     * process during layout inflation.
+     */
+    private static boolean isSameFontRoot(String name, String root) {
+        if (!name.startsWith(root)) return false;
+        return name.length() == root.length() || name.charAt(root.length()) == '-';
+    }
+
     private Typeface getOverrideTypefaceInternal(String fontToOverride) {
         if (fontToOverride == null) return null;
 
@@ -174,7 +184,7 @@ public class FontController {
         String currentFont = getCurrentFont();
 
         if (!"sans-serif".equals(currentFont)) {
-            if (fontToOverride.matches("^" + Pattern.quote(currentFont) + "(-.*)?$")) {
+            if (isSameFontRoot(fontToOverride, currentFont)) {
                 logger(fontToOverride + " matches current font root '" + currentFont + "', skipping override!");
                 return null;
             }
