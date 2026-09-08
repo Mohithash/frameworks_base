@@ -154,6 +154,10 @@ constructor(
 
         clock.eventListeners.attach(clockListener)
         clock.initialize(isDarkTheme(), dozeAmount.value, 0f)
+        // A new clock starts from the zone its calendar was created with. Hand
+        // it the current one: a zone change that landed while no clock was
+        // connected would otherwise never reach it.
+        clock.events.onTimeZoneChanged(IcuTimeZone.getTimeZone(TimeZone.getDefault().id))
 
         if (!regionSamplingEnabled) {
             updateColors()
@@ -495,6 +499,9 @@ constructor(
         configurationController.addCallback(configListener)
         batteryController.addCallback(batteryCallback)
         keyguardUpdateMonitor.registerCallback(keyguardUpdateMonitorCallback)
+        // Catch up on a zone change delivered while the callback was not
+        // registered.
+        clock?.run { events.onTimeZoneChanged(IcuTimeZone.getTimeZone(TimeZone.getDefault().id)) }
         zenModeController.addCallback(zenModeCallback)
         if (SceneContainerFlag.isEnabled) {
             handleDoze(
