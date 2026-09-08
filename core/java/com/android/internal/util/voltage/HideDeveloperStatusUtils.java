@@ -19,6 +19,7 @@ package com.android.internal.util.voltage;
 
 import android.content.ContentResolver;
 import android.content.Context;
+import android.os.Process;
 import android.provider.Settings;
 
 import java.util.Arrays;
@@ -99,7 +100,11 @@ public class HideDeveloperStatusUtils {
     }
 
     private static Set<String> getApps(ContentResolver cr) {
-        if (cr == null) {
+        // Isolated processes (WebView renderers, isolatedProcess services) may
+        // not reach the settings provider; the query throws and the process
+        // dies before its application binds. They cannot read developer state
+        // either, so there is nothing to hide from them.
+        if (cr == null || Process.isIsolated()) {
             return new HashSet<>();
         }
 
@@ -109,7 +114,7 @@ public class HideDeveloperStatusUtils {
                 return new HashSet<>(Arrays.asList(apps.split(",")));
             }
             return new HashSet<>();
-        } catch (IllegalStateException e) {
+        } catch (IllegalStateException | SecurityException e) {
             return new HashSet<>();
         }
     }
