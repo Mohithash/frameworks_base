@@ -361,4 +361,8 @@
     <bool name="def_airplane_mode_sync_enabled">true</bool>
 
     <integer name="def_ota_disable_automatic_update">1</integer>
+
+    <!-- Default for Settings.Secure.BERRY_BLACK_THEME ("Pure black" under Dark theme).
+         Left off here; a device overlay turns it on where the panel is OLED. -->
+    <bool name="def_berry_black_theme">false</bool>
 </resources>

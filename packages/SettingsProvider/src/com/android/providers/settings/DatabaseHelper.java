@@ -2236,6 +2236,9 @@ class DatabaseHelper extends SQLiteOpenHelper {
             loadBooleanSetting(stmt, Settings.Secure.USER_SETUP_COMPLETE,
                     R.bool.def_user_setup_complete);
 
+            loadBooleanSetting(stmt, Settings.Secure.BERRY_BLACK_THEME,
+                    R.bool.def_berry_black_theme);
+
             loadStringSetting(stmt, Settings.Secure.IMMERSIVE_MODE_CONFIRMATIONS,
                         R.string.def_immersive_mode_confirmations);
 
