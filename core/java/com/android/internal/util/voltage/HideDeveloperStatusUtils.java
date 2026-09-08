@@ -43,6 +43,7 @@ public class HideDeveloperStatusUtils {
         PROP_SPOOFS = new HashMap<>();
         PROP_SPOOFS.put("persist.sys.usb.config", "mtp");
         PROP_SPOOFS.put("sys.usb.config", "mtp");
+        PROP_SPOOFS.put("sys.usb.adb.disabled", "1");
         PROP_SPOOFS.put("init.svc.adbd", "stopped");
     }
 
