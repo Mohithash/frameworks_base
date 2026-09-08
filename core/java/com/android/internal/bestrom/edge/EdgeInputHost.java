@@ -35,9 +35,10 @@ public interface EdgeInputHost {
     Context getSystemContext();
 
     /**
-     * Injects an event Edge swallowed or synthesised. The event is marked
-     * POLICY_FLAG_FILTERED and injected asynchronously, so it is not offered to
-     * the input filter again.
+     * Injects an event Edge swallowed or synthesised, asynchronously. Injected
+     * events are not offered to the input filter, and they carry
+     * POLICY_FLAG_INJECTED, which is how the key interception stage tells them
+     * apart from a real press.
      *
      * @hide
      */

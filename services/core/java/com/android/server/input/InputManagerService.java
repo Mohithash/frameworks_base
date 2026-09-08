@@ -3900,6 +3900,7 @@ public class InputManagerService extends IInputManager.Stub
                 }
                 mEdgeHookEnabled = enabled;
                 mNative.setInputFilterEnabled(mInputFilter != null || mEdgeHookEnabled);
+                Slog.i(EdgeHooks.TAG, "Edge input hook " + (enabled ? "enabled" : "disabled"));
             }
         }
     }

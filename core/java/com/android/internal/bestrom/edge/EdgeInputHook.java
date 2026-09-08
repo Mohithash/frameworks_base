@@ -33,8 +33,10 @@ public interface EdgeInputHook {
 
     /**
      * Input filter stage. Sees every key and motion event while the hook is
-     * enabled, except the ones Edge injected itself (those carry
-     * POLICY_FLAG_FILTERED and the native dispatcher skips the filter for them).
+     * enabled. Events Edge injected itself never come back here: the dispatcher
+     * consults the filter only from notifyKey and notifyMotion, never from
+     * injectInputEvent. Note that the dispatcher sets POLICY_FLAG_FILTERED on
+     * everything it offers here, so that flag does not identify our own events.
      *
      * @return true to consume the event, false to let dispatch continue
      * @hide
