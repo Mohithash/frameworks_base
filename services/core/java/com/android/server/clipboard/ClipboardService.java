@@ -112,6 +112,8 @@ import android.widget.Toast;
 import com.android.internal.R;
 import com.android.internal.annotations.GuardedBy;
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.bestrom.edge.EdgeHooks;
+import com.android.internal.bestrom.edge.EdgeInputHook;
 import com.android.internal.util.FrameworkStatsLog;
 import com.android.internal.util.function.pooled.PooledLambda;
 import com.android.server.LocalServices;
@@ -618,6 +620,8 @@ public class ClipboardService extends SystemService {
                 scheduleAutoClear(userId, intendingUid, intendingDeviceId);
                 setPrimaryClipInternalLocked(clip, intendingUid, intendingDeviceId, sourcePackage);
             }
+            notifyEdgePrimaryClipChanged(clip,
+                    sourcePackage != null ? sourcePackage : callingPackage, intendingUserId);
         }
 
         private void scheduleAutoClear(
@@ -975,6 +979,22 @@ public class ClipboardService extends SystemService {
             Slog.e(TAG, "Remote Exception calling UserManager.getUserRestrictions: ", e);
             // Fails safe
             return true;
+        }
+    }
+
+    /**
+     * Tells the Edge app about a new primary clip. Called outside mLock, so a
+     * slow listener cannot block the clipboard.
+     */
+    private void notifyEdgePrimaryClipChanged(ClipData clip, String sourcePackage, int userId) {
+        final EdgeInputHook edgeHook = EdgeHooks.get();
+        if (edgeHook == null) {
+            return;
+        }
+        try {
+            edgeHook.onPrimaryClipChanged(clip, sourcePackage, userId);
+        } catch (Throwable t) {
+            Slog.e(EdgeHooks.TAG, "onPrimaryClipChanged failed", t);
         }
     }
 

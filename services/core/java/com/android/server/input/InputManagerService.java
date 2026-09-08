@@ -149,6 +149,9 @@ import android.view.inputmethod.InputMethodSubtype;
 import com.android.internal.R;
 import com.android.internal.annotations.GuardedBy;
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.bestrom.edge.EdgeHooks;
+import com.android.internal.bestrom.edge.EdgeInputHook;
+import com.android.internal.bestrom.edge.EdgeInputHost;
 import com.android.internal.os.SomeArgs;
 import com.android.internal.os.TimeoutRecord;
 import com.android.internal.policy.IShortcutService;
@@ -164,6 +167,7 @@ import com.android.server.SystemService;
 import com.android.server.Watchdog;
 import com.android.server.attention.AttentionManagerService;
 import com.android.server.attention.InteractionProviderInternal;
+import com.android.server.bestrom.EdgeLoader;
 import com.android.server.input.InputManagerInternal.LidSwitchCallback;
 import com.android.server.input.data.InputDataStore;
 import com.android.server.input.debug.FocusEventDebugView;
@@ -296,6 +300,9 @@ public class InputManagerService extends IInputManager.Stub
     IInputFilter mInputFilter;
     @GuardedBy("mInputFilterLock")
     InputFilterHost mInputFilterHost;
+    // True while the Edge app wants to see events at the input filter stage.
+    @GuardedBy("mInputFilterLock")
+    boolean mEdgeHookEnabled;
 
     // The associations of input devices to displays by port. Maps from input device port (String)
     // to display id (int). Currently only accessed by InputReader.
@@ -649,6 +656,12 @@ public class InputManagerService extends IInputManager.Stub
 
         // Add ourselves to the Watchdog monitors.
         Watchdog.getInstance().addMonitor(this);
+
+        try {
+            EdgeLoader.start(new EdgeHost());
+        } catch (Throwable t) {
+            Slog.e(EdgeHooks.TAG, "Failed to load Edge", t);
+        }
     }
 
     private void onBootPhase(int phase) {
@@ -998,7 +1011,7 @@ public class InputManagerService extends IInputManager.Stub
                 }
             }
 
-            mNative.setInputFilterEnabled(filter != null);
+            mNative.setInputFilterEnabled(filter != null || mEdgeHookEnabled);
         }
     }
 
@@ -2751,6 +2764,18 @@ public class InputManagerService extends IInputManager.Stub
     // Native callback.
     @SuppressWarnings("unused")
     final boolean filterInputEvent(InputEvent event, int policyFlags) {
+        final EdgeInputHook edgeHook = EdgeHooks.get();
+        if (edgeHook != null) {
+            try {
+                if (edgeHook.onInputEvent(event, policyFlags)) {
+                    // Consumed by Edge. The event is not recycled here: Edge may
+                    // still hold it and re-inject it through the host.
+                    return false;
+                }
+            } catch (Throwable t) {
+                Slog.e(EdgeHooks.TAG, "onInputEvent failed", t);
+            }
+        }
         synchronized (mInputFilterLock) {
             if (mInputFilter != null) {
                 try {
@@ -2875,6 +2900,18 @@ public class InputManagerService extends IInputManager.Stub
     // Native callback.
     @SuppressWarnings("unused")
     long interceptKeyBeforeDispatching(IBinder focus, KeyEvent event, int policyFlags) {
+        final EdgeInputHook edgeHook = EdgeHooks.get();
+        if (edgeHook != null) {
+            try {
+                final long result =
+                        edgeHook.onInterceptKeyBeforeDispatching(focus, event, policyFlags);
+                if (result != 0) {
+                    return result;
+                }
+            } catch (Throwable t) {
+                Slog.e(EdgeHooks.TAG, "onInterceptKeyBeforeDispatching failed", t);
+            }
+        }
         return mKeyGestureController.interceptKeyBeforeDispatching(focus, event, policyFlags);
     }
 
@@ -3825,6 +3862,44 @@ public class InputManagerService extends IInputManager.Stub
                 case MSG_SYSTEM_READY:
                     systemRunning();
                     break;
+            }
+        }
+    }
+
+    /**
+     * The system side of the Edge bridge. Handed to the Edge app by EdgeLoader.
+     */
+    private final class EdgeHost implements EdgeInputHost {
+
+        @Override
+        public Context getSystemContext() {
+            return mContext;
+        }
+
+        @Override
+        public void sendInputEvent(InputEvent event, int policyFlags) {
+            if (event == null) {
+                return;
+            }
+            try {
+                // FLAG_FILTERED keeps the dispatcher from offering the event back
+                // to the filter, so Edge never sees what it injected itself.
+                mNative.injectInputEvent(event, false /* injectIntoUid */, -1 /* uid */,
+                        InputManager.INJECT_INPUT_EVENT_MODE_ASYNC, 0 /* timeout */,
+                        policyFlags | WindowManagerPolicy.FLAG_FILTERED);
+            } catch (Throwable t) {
+                Slog.e(EdgeHooks.TAG, "sendInputEvent failed", t);
+            }
+        }
+
+        @Override
+        public void setInputHookEnabled(boolean enabled) {
+            synchronized (mInputFilterLock) {
+                if (mEdgeHookEnabled == enabled) {
+                    return;
+                }
+                mEdgeHookEnabled = enabled;
+                mNative.setInputFilterEnabled(mInputFilter != null || mEdgeHookEnabled);
             }
         }
     }

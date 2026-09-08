@@ -202,6 +202,8 @@ import com.android.internal.accessibility.util.AccessibilityUtils;
 import com.android.internal.accessibility.util.ShortcutUtils;
 import com.android.internal.annotations.GuardedBy;
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.bestrom.edge.EdgeHooks;
+import com.android.internal.bestrom.edge.EdgeInputHook;
 import com.android.internal.content.PackageMonitor;
 import com.android.internal.inputmethod.IAccessibilityInputMethodSession;
 import com.android.internal.inputmethod.IRemoteAccessibilityInputConnection;
@@ -2680,9 +2682,23 @@ public class AccessibilityManagerService extends IAccessibilityManager.Stub
     }
 
     private int getClientStateLocked(AccessibilityUserState userState) {
-        return userState.getClientStateLocked(
+        int clientState = userState.getClientStateLocked(
             mUiAutomationManager.canIntrospect(),
             mTraceManager.getTraceStateForAccessibilityManagerClientState());
+        // Edge's universal copy reads the node tree of the foreground app. Apps
+        // only build that tree while they think accessibility is on, so report it
+        // as enabled for as long as Edge asks for it.
+        final EdgeInputHook edgeHook = EdgeHooks.get();
+        if (edgeHook != null) {
+            try {
+                if (edgeHook.wantsAccessibilityEnabled()) {
+                    clientState |= AccessibilityManager.STATE_FLAG_ACCESSIBILITY_ENABLED;
+                }
+            } catch (Throwable t) {
+                Slog.e(EdgeHooks.TAG, "wantsAccessibilityEnabled failed", t);
+            }
+        }
+        return clientState;
     }
 
     private InteractionBridge getInteractionBridge() {
