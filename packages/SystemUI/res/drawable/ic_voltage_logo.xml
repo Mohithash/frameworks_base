@@ -1,14 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: 2026 BestROM
+     SPDX-License-Identifier: Apache-2.0
+
+     BestROM brand mark: the 5x7 dot-matrix "B" (rows 4-2-2-4-2-2-4, twenty
+     dots), the same glyph as the boot animation and the Settings About page
+     mark, rescaled from its 400x400 viewport to 24x24. Dot radius keeps the
+     0.372 radius/pitch of the original. The fill is opaque white because the
+     status-bar chip draws this through Icon(tint = ...), which replaces the
+     colour; the file name is unchanged so nothing else has to move.
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
     <path
-        android:strokeColor="#FFFFFFFF"
-        android:strokeWidth="1.75"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:fillColor="#00000000"
-        android:pathData="M13.5,2.5 L3.5,13.5 H11 L9.5,21.5 L20.5,9 H12.5 L14.5,2.5 Z" />
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M5.32,3.55a1.05,1.05 0 1,0 2.1,0a1.05,1.05 0 1,0 -2.1,0M8.13,3.55a1.05,1.05 0 1,0 2.1,0a1.05,1.05 0 1,0 -2.1,0M10.95,3.55a1.05,1.05 0 1,0 2.1,0a1.05,1.05 0 1,0 -2.1,0M13.77,3.55a1.05,1.05 0 1,0 2.1,0a1.05,1.05 0 1,0 -2.1,0M5.32,6.37a1.05,1.05 0 1,0 2.1,0a1.05,1.05 0 1,0 -2.1,0M16.58,6.37a1.05,1.05 0 1,0 2.1,0a1.05,1.05 0 1,0 -2.1,0M5.32,9.18a1.05,1.05 0 1,0 2.1,0a1.05,1.05 0 1,0 -2.1,0M16.58,9.18a1.05,1.05 0 1,0 2.1,0a1.05,1.05 0 1,0 -2.1,0M5.32,12a1.05,1.05 0 1,0 2.1,0a1.05,1.05 0 1,0 -2.1,0M8.13,12a1.05,1.05 0 1,0 2.1,0a1.05,1.05 0 1,0 -2.1,0M10.95,12a1.05,1.05 0 1,0 2.1,0a1.05,1.05 0 1,0 -2.1,0M13.77,12a1.05,1.05 0 1,0 2.1,0a1.05,1.05 0 1,0 -2.1,0M5.32,14.82a1.05,1.05 0 1,0 2.1,0a1.05,1.05 0 1,0 -2.1,0M16.58,14.82a1.05,1.05 0 1,0 2.1,0a1.05,1.05 0 1,0 -2.1,0M5.32,17.63a1.05,1.05 0 1,0 2.1,0a1.05,1.05 0 1,0 -2.1,0M16.58,17.63a1.05,1.05 0 1,0 2.1,0a1.05,1.05 0 1,0 -2.1,0M5.32,20.45a1.05,1.05 0 1,0 2.1,0a1.05,1.05 0 1,0 -2.1,0M8.13,20.45a1.05,1.05 0 1,0 2.1,0a1.05,1.05 0 1,0 -2.1,0M10.95,20.45a1.05,1.05 0 1,0 2.1,0a1.05,1.05 0 1,0 -2.1,0M13.77,20.45a1.05,1.05 0 1,0 2.1,0a1.05,1.05 0 1,0 -2.1,0" />
 </vector>
