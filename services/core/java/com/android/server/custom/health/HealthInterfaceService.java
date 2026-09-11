@@ -61,17 +61,12 @@ public class HealthInterfaceService extends SystemService {
     @Override
     public void onStart() {
         mCCC = new ChargingControlController(mContext, mHandler);
-        if (mCCC.isSupported()) {
-            mFeatures.add(mCCC);
-        }
         mFCC = new FastChargeController(mContext, mHandler);
-        if (mFCC.isSupported()) {
-            mFeatures.add(mFCC);
-        }
-
-        if (!mFeatures.isEmpty()) {
-            publishBinderService(LineageContextConstants.LINEAGE_HEALTH_INTERFACE, mService);
-        }
+        // Always publish. The vendor FastCharge HAL often comes up after this
+        // service's onStart; if we only publish when isSupported() is already
+        // true, Settings never sees "Charging speed" for the whole boot.
+        publishBinderService(LineageContextConstants.LINEAGE_HEALTH_INTERFACE, mService);
+        refreshFeatures();
     }
 
     @Override
@@ -80,9 +75,20 @@ public class HealthInterfaceService extends SystemService {
             return;
         }
 
-        // start and update all features
+        // HAL is usually up by now; pick up features that were unavailable at
+        // onStart and apply persisted Settings.
+        refreshFeatures();
         for (LineageHealthFeature feature : mFeatures) {
             feature.start();
+        }
+    }
+
+    private void refreshFeatures() {
+        if (mCCC != null && mCCC.isSupported() && !mFeatures.contains(mCCC)) {
+            mFeatures.add(mCCC);
+        }
+        if (mFCC != null && mFCC.isSupported() && !mFeatures.contains(mFCC)) {
+            mFeatures.add(mFCC);
         }
     }
 

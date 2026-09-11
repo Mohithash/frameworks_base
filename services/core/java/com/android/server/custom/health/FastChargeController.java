@@ -32,7 +32,7 @@ import java.util.List;
 public class FastChargeController extends LineageHealthFeature {
     private final int[] mChargingSpeedValues;
     private final ContentResolver mContentResolver;
-    private final IFastCharge mFastCharge;
+    private IFastCharge mFastCharge;
 
     // Settings uris
     private final Uri MODE_URI = Settings.System.getUriFor(
@@ -42,9 +42,11 @@ public class FastChargeController extends LineageHealthFeature {
         super(context, handler);
 
         mContentResolver = mContext.getContentResolver();
+        // Do not waitForDeclaredService here: HealthInterfaceService.onStart runs
+        // before vendor.lineage.health is guaranteed up, and a null HAL then
+        // permanently hides Settings → Battery → Charging speed.
         mFastCharge = IFastCharge.Stub.asInterface(
-                ServiceManager.waitForDeclaredService(
-                        IFastCharge.DESCRIPTOR + "/default"));
+                ServiceManager.getService(IFastCharge.DESCRIPTOR + "/default"));
 
         Resources res = mContext.getResources();
         mChargingSpeedValues = Stream.of(res.getStringArray(R.array.charging_speed_values))
@@ -52,15 +54,23 @@ public class FastChargeController extends LineageHealthFeature {
                 .toArray();
 
         if (mFastCharge == null) {
-            Log.i(TAG, "Lineage Health HAL not found");
-            return;
+            Log.i(TAG, "Lineage Health HAL not ready yet");
         }
+    }
+
+    private IFastCharge hal() {
+        if (mFastCharge == null) {
+            mFastCharge = IFastCharge.Stub.asInterface(
+                    ServiceManager.getService(IFastCharge.DESCRIPTOR + "/default"));
+        }
+        return mFastCharge;
     }
 
     @Override
     public boolean isSupported() {
         try {
-            return mFastCharge != null && mFastCharge.getSupportedFastChargeModes() > 0;
+            IFastCharge hal = hal();
+            return hal != null && hal.getSupportedFastChargeModes() > 0;
         } catch (RemoteException e) {
             return false;
         }
@@ -68,7 +78,9 @@ public class FastChargeController extends LineageHealthFeature {
 
     public int[] getSupportedFastChargeModes() {
         try {
-            long supportedFastChargeModes = mFastCharge.getSupportedFastChargeModes();
+            IFastCharge hal = hal();
+            if (hal == null) return new int[0];
+            long supportedFastChargeModes = hal.getSupportedFastChargeModes();
 
             return IntStream.of(mChargingSpeedValues)
                     .filter(mode -> (supportedFastChargeModes & mode) != 0)
@@ -80,7 +92,16 @@ public class FastChargeController extends LineageHealthFeature {
 
     public int getFastChargeMode() {
         int[] supportedFastChargeModes = getSupportedFastChargeModes();
-        int defaultMode = supportedFastChargeModes[supportedFastChargeModes.length - 1];
+        if (supportedFastChargeModes.length == 0) {
+            return FastChargeMode.NONE;
+        }
+        // Prefer Fast (smart charge, no sport) over Super. Super is available
+        // in Settings but must be an explicit user choice — defaulting to the
+        // last array entry used to pin SUPER_FAST and run hotter.
+        int defaultMode = FastChargeMode.FAST_CHARGE;
+        if (!ArrayUtils.contains(supportedFastChargeModes, defaultMode)) {
+            defaultMode = supportedFastChargeModes[0];
+        }
 
         int mode = Settings.System.getInt(mContentResolver,
                 Settings.System.FAST_CHARGE_MODE,
@@ -99,7 +120,7 @@ public class FastChargeController extends LineageHealthFeature {
 
     @Override
     public void onStart() {
-        if (mFastCharge == null) {
+        if (hal() == null) {
             return;
         }
 
@@ -111,7 +132,10 @@ public class FastChargeController extends LineageHealthFeature {
 
     private void handleSettingChange() {
         try {
-            mFastCharge.setFastChargeMode(getFastChargeMode());
+            IFastCharge hal = hal();
+            if (hal != null) {
+                hal.setFastChargeMode(getFastChargeMode());
+            }
         } catch (Exception e) {
         }
     }

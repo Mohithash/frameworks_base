@@ -85,6 +85,9 @@ public class HealthInterface {
      */
     private boolean checkService() {
         if (sService == null) {
+            getService();
+        }
+        if (sService == null) {
             Log.w(TAG, "not connected to LineageHardwareManagerService");
             return false;
         }
