@@ -1137,17 +1137,21 @@ public class EdgeBackGestureHandler implements TunerService.Tunable {
             return withinRange;
         }
 
-        /* If Launcher is showing and wants to block back gesture, let's still trigger our custom
-        swipe actions at the very bottom of the screen, because we are cool.*/
+        /* Voltage extended/long-swipe actions used to ignore app gesture-exclusion
+           for the bottom 25% of the screen. That band ate Telegram/WhatsApp row
+           swipes. Keep a hole only in the bottom gesture-nav strip so custom
+           long-swipes can still fire under the launcher exclusion. */
         boolean isInExcludedRegion = false;
-        // still block extended swipe if keyboard is showing, to avoid conflicts with IME gestures
         if (!mImeVisible && (
                 mIsExtendedSwipe
-                || (mLeftLongSwipeAction != 0 && mIsOnLeftEdge)  || (mRightLongSwipeAction != 0 && !mIsOnLeftEdge))) {
-            isInExcludedRegion= mExcludeRegion.contains(x, y)
-                && y < ((mDisplaySize.y / 4) * 3);
+                || (mLeftLongSwipeAction != 0 && mIsOnLeftEdge)
+                || (mRightLongSwipeAction != 0 && !mIsOnLeftEdge))) {
+            final int bottomExempt =
+                    Math.max((int) mBottomGestureHeight, (int) (mDisplaySize.y * 0.08f));
+            final boolean inBottomGestureStrip = y >= (mDisplaySize.y - bottomExempt);
+            isInExcludedRegion = mExcludeRegion.contains(x, y) && !inBottomGestureStrip;
         } else {
-            isInExcludedRegion= mExcludeRegion.contains(x, y);
+            isInExcludedRegion = mExcludeRegion.contains(x, y);
         }
         if (isInExcludedRegion) {
             if (withinRange) {
