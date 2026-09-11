@@ -627,6 +627,16 @@ final class RemotePrintSpooler {
             return;
         }
 
+        // Debloat / OEM images sometimes omit PrintSpooler. bindServiceAsUser then never
+        // connects and we burn BIND_SPOOLER_SERVICE_TIMEOUT (10s user) on android.bg —
+        // enough to stall SCREEN_OFF / print cleanup under load. Fail fast instead.
+        try {
+            mContext.getPackageManager().getPackageInfoAsUser(
+                    PRINT_SPOOLER_PACKAGE_NAME, 0, mUserHandle.getIdentifier());
+        } catch (PackageManager.NameNotFoundException e) {
+            throw new TimeoutException("PrintSpooler package missing");
+        }
+
         mIsBinding = true;
 
         if (DEBUG) {
