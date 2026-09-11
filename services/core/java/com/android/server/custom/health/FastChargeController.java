@@ -10,6 +10,7 @@ import android.content.ContentResolver;
 import android.content.Context;
 import android.net.Uri;
 import android.os.Handler;
+import android.os.IBinder;
 import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.provider.Settings;
@@ -60,8 +61,13 @@ public class FastChargeController extends LineageHealthFeature {
 
     private IFastCharge hal() {
         if (mFastCharge == null) {
-            mFastCharge = IFastCharge.Stub.asInterface(
-                    ServiceManager.getService(IFastCharge.DESCRIPTOR + "/default"));
+            final String name = IFastCharge.DESCRIPTOR + "/default";
+            IBinder b = ServiceManager.getService(name);
+            // After boot the HAL is declared; wait briefly if getService raced.
+            if (b == null && ServiceManager.isDeclared(name)) {
+                b = ServiceManager.waitForDeclaredService(name);
+            }
+            mFastCharge = IFastCharge.Stub.asInterface(b);
         }
         return mFastCharge;
     }

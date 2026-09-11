@@ -442,6 +442,7 @@ public final class LineageHardwareManager {
                         break;
                     case FEATURE_KEY_SWAP:
                         IKeySwapper.Stub.asInterface(b).setEnabled(enable);
+                        break;
                     case FEATURE_READING_ENHANCEMENT:
                         IReadingEnhancement.Stub.asInterface(b).setEnabled(enable);
                         break;
