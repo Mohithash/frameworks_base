@@ -249,11 +249,33 @@ public class AdbService extends IAdbManager.Stub {
                 containsFunction(
                         SystemProperties.get(USB_PERSISTENT_CONFIG_PROPERTY, ""),
                         UsbManager.USB_FUNCTION_ADB);
-        boolean shouldEnableAdbUsb =
-                mIsAdbUsbEnabled
-                        || SystemProperties.getBoolean(
-                                TestHarnessModeService.TEST_HARNESS_MODE_PROPERTY, false);
+        final boolean testHarness =
+                SystemProperties.getBoolean(
+                        TestHarnessModeService.TEST_HARNESS_MODE_PROPERTY, false);
+        boolean shouldEnableAdbUsb = mIsAdbUsbEnabled || testHarness;
         mIsAdbWifiEnabled = "1".equals(SystemProperties.get(WIFI_PERSISTENT_CONFIG_PROPERTY, "0"));
+
+        // BestROM: Shizuku (wireless debugging) sets persist.adb.tls_server.enable=1.
+        // Turning Developer options off does not always clear that prop (e.g. only the
+        // master switch flipped, or wireless toggled while Settings controllers never
+        // ran). systemReady used to rewrite ADB_*_ENABLED from the prop every boot, so
+        // the allow-connect dialog returned after reboot with Developer options still
+        // off. If Developer options are off, do not resurrect USB/Wi‑Fi ADB.
+        final boolean developerOptionsEnabled =
+                Settings.Global.getInt(
+                                mContentResolver,
+                                Settings.Global.DEVELOPMENT_SETTINGS_ENABLED,
+                                0)
+                        != 0;
+        if (!developerOptionsEnabled && !testHarness) {
+            if (mIsAdbWifiEnabled) {
+                Slog.i(TAG, "Clearing stale wireless ADB; Developer options are off");
+                disableADBdWifi();
+                mIsAdbWifiEnabled = false;
+            }
+            shouldEnableAdbUsb = false;
+            mIsAdbUsbEnabled = false;
+        }
 
         // make sure the ADB_ENABLED setting value matches the current state
         try {

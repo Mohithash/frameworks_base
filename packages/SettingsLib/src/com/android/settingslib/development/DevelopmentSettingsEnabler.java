@@ -16,6 +16,7 @@
 
 package com.android.settingslib.development;
 
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
@@ -33,8 +34,18 @@ public class DevelopmentSettingsEnabler {
     }
 
     public static void setDevelopmentSettingsEnabled(Context context, boolean enable) {
-        Settings.Global.putInt(context.getContentResolver(),
+        final ContentResolver cr = context.getContentResolver();
+        Settings.Global.putInt(cr,
                 Settings.Global.DEVELOPMENT_SETTINGS_ENABLED, enable ? 1 : 0);
+        // BestROM: flipping only the master switch (or callers that skip the
+        // Development Settings controllers) used to leave adb_enabled /
+        // adb_wifi_enabled and persist.adb.tls_server.enable set. Shizuku users
+        // then saw the allow-connect dialog again after every reboot. Clearing
+        // the Global flags here lets AdbService drop the persist prop too.
+        if (!enable) {
+            Settings.Global.putInt(cr, Settings.Global.ADB_ENABLED, 0);
+            Settings.Global.putInt(cr, Settings.Global.ADB_WIFI_ENABLED, 0);
+        }
         LocalBroadcastManager.getInstance(context)
                 .sendBroadcast(new Intent(DEVELOPMENT_SETTINGS_CHANGED_ACTION));
     }
