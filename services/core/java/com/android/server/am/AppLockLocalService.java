@@ -54,6 +54,7 @@ import com.android.internal.annotations.GuardedBy;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.content.PackageMonitor;
 import com.android.internal.os.BackgroundThread;
+import com.android.server.IoThread;
 import com.android.server.LocalServices;
 import com.android.server.pm.UserManagerInternal;
 import com.android.server.wm.ActivityAssistInfo;
@@ -836,7 +837,11 @@ public final class AppLockLocalService implements AppLockInternal,
         if (targets.size() == 0) {
             return;
         }
-        mInjector.getHandler().post(() -> forceLockPackages(targets));
+        // SCREEN_OFF is delivered on BackgroundThread (see registerReceiver). forceLockPackages
+        // takes the AMS lock and can stall for seconds under contention. Posting it on that same
+        // handler queues the next SCREEN_OFF behind the lock work and trips the 10s broadcast ANR
+        // (subject: AppLockLocalService$2 / SCREEN_OFF). Run the heavy work on IoThread instead.
+        IoThread.getHandler().post(() -> forceLockPackages(targets));
     }
 
     private void forceLockPackages(SparseArray<ArraySet<String>> targets) {
