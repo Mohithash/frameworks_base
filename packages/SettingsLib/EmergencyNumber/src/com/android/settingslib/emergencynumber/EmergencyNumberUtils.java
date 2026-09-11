@@ -117,7 +117,7 @@ public class EmergencyNumberUtils {
     public void setEmergencyNumberOverride(String number) {
         final Bundle bundle = new Bundle();
         bundle.putString(EMERGENCY_GESTURE_CALL_NUMBER, number);
-        mContext.getContentResolver().call(EMERGENCY_NUMBER_OVERRIDE_AUTHORITY,
+        callEmergencyGestureProvider(
                 METHOD_NAME_SET_EMERGENCY_NUMBER_OVERRIDE, null /* args */, bundle);
     }
 
@@ -128,7 +128,7 @@ public class EmergencyNumberUtils {
         final Bundle bundle = new Bundle();
         bundle.putInt(EMERGENCY_SETTING_VALUE,
                 enabled ? EMERGENCY_SETTING_ON : EMERGENCY_SETTING_OFF);
-        mContext.getContentResolver().call(EMERGENCY_NUMBER_OVERRIDE_AUTHORITY,
+        callEmergencyGestureProvider(
                 METHOD_NAME_SET_EMERGENCY_GESTURE, null /* args */, bundle);
     }
 
@@ -139,7 +139,7 @@ public class EmergencyNumberUtils {
         final Bundle bundle = new Bundle();
         bundle.putInt(EMERGENCY_SETTING_VALUE,
                 enabled ? EMERGENCY_SETTING_ON : EMERGENCY_SETTING_OFF);
-        mContext.getContentResolver().call(EMERGENCY_NUMBER_OVERRIDE_AUTHORITY,
+        callEmergencyGestureProvider(
                 METHOD_NAME_SET_EMERGENCY_SOUND, null /* args */, bundle);
     }
 
@@ -147,8 +147,7 @@ public class EmergencyNumberUtils {
      * Whether or not emergency gesture is enabled.
      */
     public boolean getEmergencyGestureEnabled() {
-        final Bundle bundle = mContext.getContentResolver().call(
-                EMERGENCY_NUMBER_OVERRIDE_AUTHORITY,
+        final Bundle bundle = callEmergencyGestureProvider(
                 METHOD_NAME_GET_EMERGENCY_GESTURE_ENABLED, null /* args */, null /* bundle */);
         return bundle == null ? true : bundle.getInt(EMERGENCY_SETTING_VALUE, EMERGENCY_SETTING_ON)
                 == EMERGENCY_SETTING_ON;
@@ -158,19 +157,42 @@ public class EmergencyNumberUtils {
      * Whether or not emergency gesture sound is enabled.
      */
     public boolean getEmergencyGestureSoundEnabled() {
-        final Bundle bundle = mContext.getContentResolver().call(
-                EMERGENCY_NUMBER_OVERRIDE_AUTHORITY,
+        final Bundle bundle = callEmergencyGestureProvider(
                 METHOD_NAME_GET_EMERGENCY_GESTURE_SOUND_ENABLED, null /* args */,
                 null /* bundle */);
         return bundle == null ? true : bundle.getInt(EMERGENCY_SETTING_VALUE, EMERGENCY_SETTING_OFF)
                 == EMERGENCY_SETTING_ON;
     }
 
+    /**
+     * True when {@code com.android.emergency} still owns the gesture provider.
+     * HyperOS and some debloat lists remove that APK while leaving Settings
+     * rows that call into this authority.
+     */
+    public boolean isEmergencyGestureProviderAvailable() {
+        return mContext.getPackageManager().resolveContentProvider(
+                EMERGENCY_NUMBER_OVERRIDE_AUTHORITY.getAuthority(), 0) != null;
+    }
+
     private String getEmergencyNumberOverride() {
-        final Bundle bundle = mContext.getContentResolver().call(
-                EMERGENCY_NUMBER_OVERRIDE_AUTHORITY,
+        final Bundle bundle = callEmergencyGestureProvider(
                 METHOD_NAME_GET_EMERGENCY_NUMBER_OVERRIDE, null /* args */, null /* bundle */);
         return bundle == null ? null : bundle.getString(EMERGENCY_GESTURE_CALL_NUMBER);
+    }
+
+    private Bundle callEmergencyGestureProvider(String method, String arg, Bundle extras) {
+        if (!isEmergencyGestureProviderAvailable()) {
+            Log.w(TAG, "Missing provider " + EMERGENCY_NUMBER_OVERRIDE_AUTHORITY.getAuthority());
+            return null;
+        }
+        try {
+            return mContext.getContentResolver().call(
+                    EMERGENCY_NUMBER_OVERRIDE_AUTHORITY, method, arg, extras);
+        } catch (IllegalArgumentException e) {
+            // Authority vanished between resolve and call (uninstall race).
+            Log.w(TAG, "Emergency gesture provider call failed", e);
+            return null;
+        }
     }
 
     private List<String> getPromotedEmergencyNumbers(int categories) {
