@@ -1517,24 +1517,25 @@ public class KeyguardIndicationController {
         boolean showbatteryInfo = Settings.System.getIntForUser(mContext.getContentResolver(),
             Settings.System.LOCKSCREEN_BATTERY_INFO, 1, UserHandle.USER_CURRENT) == 1;
          if (showbatteryInfo) {
+            // Order: current · voltage · wattage · temp (matches what users read on bricks).
             if (mChargingCurrent >= mCurrentDivider * 1000) {
-                batteryInfo = String.format("%.1f" , (mChargingCurrent / mCurrentDivider / 1000)) + "A";
+                batteryInfo = String.format("%.1f", (mChargingCurrent / mCurrentDivider / 1000)) + "A";
             } else if (mChargingCurrent > 0) {
-                batteryInfo = String.format("%.0f" , (mChargingCurrent / mCurrentDivider)) + "mA";
-            }
-            if (mChargingWattage > 0) {
-                batteryInfo = (batteryInfo == "" ? "" : batteryInfo + " · ") +
-                        String.format("%.1f" , (mChargingWattage / mCurrentDivider / 1000)) + "W";
+                batteryInfo = String.format("%.0f", (mChargingCurrent / mCurrentDivider)) + "mA";
             }
             if (mChargingVoltage > 0) {
-                batteryInfo = (batteryInfo == "" ? "" : batteryInfo + " · ") +
+                batteryInfo = (batteryInfo.isEmpty() ? "" : batteryInfo + " · ") +
                         String.format("%.1f", (mChargingVoltage / 1000 / 1000)) + "V";
             }
+            if (mChargingWattage > 0) {
+                batteryInfo = (batteryInfo.isEmpty() ? "" : batteryInfo + " · ") +
+                        String.format("%.1f", (mChargingWattage / mCurrentDivider / 1000)) + "W";
+            }
             if (mTemperature > 0) {
-                batteryInfo = (batteryInfo == "" ? "" : batteryInfo + " · ") +
+                batteryInfo = (batteryInfo.isEmpty() ? "" : batteryInfo + " · ") +
                         String.format("%.1f", (mTemperature / 10)) + "°C";
             }
-            if (batteryInfo != "") {
+            if (!batteryInfo.isEmpty()) {
                 batteryInfo = "\n" + batteryInfo;
             }
         }
