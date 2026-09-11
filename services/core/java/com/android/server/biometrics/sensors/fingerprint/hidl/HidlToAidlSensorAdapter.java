@@ -97,7 +97,7 @@ public class HidlToAidlSensorAdapter extends Sensor implements IHwBinder.DeathRe
             @NonNull AuthSessionCoordinator authSessionCoordinator,
             @Nullable IBiometricsFingerprint daemon,
             @Nullable AidlResponseHandler.AidlResponseHandlerCallback aidlResponseHandlerCallback) {
-        super(provider, context, handler, getFingerprintSensorPropertiesInternal(prop,
+        super(provider, context, handler, getFingerprintSensorPropertiesInternal(context, prop,
                         new ArrayList<>(), resetLockoutRequiresHardwareAuthToken),
                 biometricContext, null /* session */);
         mLockoutResetDispatcher = lockoutResetDispatcher;

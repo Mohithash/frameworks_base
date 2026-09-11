@@ -45,6 +45,7 @@ import android.hardware.biometrics.BiometricStateListener;
 import android.hardware.biometrics.IBiometricContextListener;
 import android.hardware.biometrics.IBiometricSysuiReceiver;
 import android.hardware.biometrics.PromptInfo;
+import android.hardware.biometrics.SensorLocationInternal;
 import android.hardware.display.DisplayManager;
 import android.hardware.face.FaceManager;
 import android.hardware.face.FaceSensorPropertiesInternal;
@@ -291,7 +292,8 @@ public class AuthController implements
                     + Arrays.toString(sensors.toArray()));
         }
         mAllFingerprintAuthenticatorsRegistered = true;
-        mFpProps = sensors;
+        mFpProps = maybeCoerceOpticalUdfps(
+                maybeSynthesizeUdfpsFromOverlay(sensors));
 
         List<FingerprintSensorPropertiesInternal> udfpsProps = new ArrayList<>();
         List<FingerprintSensorPropertiesInternal> sidefpsProps = new ArrayList<>();
@@ -337,6 +339,102 @@ public class AuthController implements
         for (Callback cb : mCallbacks) {
             cb.onAllAuthenticatorsRegistered(TYPE_FINGERPRINT);
         }
+    }
+
+    /**
+     * AIDL fingerprint HALs do not read {@code config_udfps_sensor_props}; only the HIDL
+     * AuthService path does. If the HAL mis-reports type/location, BiometricPrompt falls
+     * back to the rear-FPS mid-screen icon layout. When the overlay array is present and
+     * no registered sensor is UDFPS, synthesize one from those coordinates.
+     */
+    @NonNull
+    private List<FingerprintSensorPropertiesInternal> maybeSynthesizeUdfpsFromOverlay(
+            @NonNull List<FingerprintSensorPropertiesInternal> sensors) {
+        for (FingerprintSensorPropertiesInternal props : sensors) {
+            if (props.isAnyUdfpsType()) {
+                return sensors;
+            }
+        }
+        final int[] udfpsProps = mContext.getResources().getIntArray(
+                com.android.internal.R.array.config_udfps_sensor_props);
+        if (udfpsProps.length != 3 || sensors.isEmpty()) {
+            return sensors;
+        }
+        final FingerprintSensorPropertiesInternal src = sensors.get(0);
+        final FingerprintSensorPropertiesInternal synthesized =
+                new FingerprintSensorPropertiesInternal(
+                        src.sensorId,
+                        src.sensorStrength,
+                        src.maxEnrollmentsPerUser,
+                        src.componentInfo,
+                        FingerprintSensorProperties.TYPE_UDFPS_OPTICAL,
+                        true /* halControlsIllumination */,
+                        src.halHandlesDisplayTouches,
+                        src.resetLockoutRequiresHardwareAuthToken,
+                        List.of(new SensorLocationInternal(
+                                "" /* displayId */,
+                                udfpsProps[0],
+                                udfpsProps[1],
+                                udfpsProps[2])));
+        Log.i(TAG, "Synthesized UDFPS props from config_udfps_sensor_props: "
+                + udfpsProps[0] + "|" + udfpsProps[1] + "|" + udfpsProps[2]
+                + " (HAL reported non-UDFPS)");
+        final List<FingerprintSensorPropertiesInternal> out = new ArrayList<>(sensors.size());
+        out.add(synthesized);
+        for (int i = 1; i < sensors.size(); i++) {
+            out.add(sensors.get(i));
+        }
+        return out;
+    }
+
+    /**
+     * Peridot is optical UDFPS ({@code udfps_optical}), but a dirty-flash can leave
+     * {@code persist.vendor.fingerprint.type=udfps} which the HAL maps to ultrasonic.
+     * Ultrasonic mode arms a full-screen keyguard touch overlay that pilfers swipes
+     * and rubber-bands the lock screen. Coerce to optical when the device overlay
+     * declares UDFPS sensor props.
+     */
+    @NonNull
+    private List<FingerprintSensorPropertiesInternal> maybeCoerceOpticalUdfps(
+            @NonNull List<FingerprintSensorPropertiesInternal> sensors) {
+        final int[] udfpsProps = mContext.getResources().getIntArray(
+                com.android.internal.R.array.config_udfps_sensor_props);
+        if (udfpsProps.length != 3 || sensors.isEmpty()) {
+            return sensors;
+        }
+        boolean changed = false;
+        final List<FingerprintSensorPropertiesInternal> out = new ArrayList<>(sensors.size());
+        for (FingerprintSensorPropertiesInternal src : sensors) {
+            if (src.sensorType == FingerprintSensorProperties.TYPE_UDFPS_OPTICAL) {
+                out.add(src);
+                continue;
+            }
+            if (!src.isAnyUdfpsType()
+                    && src.sensorType != FingerprintSensorProperties.TYPE_UNKNOWN
+                    && src.sensorType != FingerprintSensorProperties.TYPE_REAR) {
+                out.add(src);
+                continue;
+            }
+            final SensorLocationInternal loc = src.getLocation();
+            final int x = loc != null && loc.sensorRadius > 0 ? loc.sensorLocationX : udfpsProps[0];
+            final int y = loc != null && loc.sensorRadius > 0 ? loc.sensorLocationY : udfpsProps[1];
+            final int r = loc != null && loc.sensorRadius > 0 ? loc.sensorRadius : udfpsProps[2];
+            out.add(new FingerprintSensorPropertiesInternal(
+                    src.sensorId,
+                    src.sensorStrength,
+                    src.maxEnrollmentsPerUser,
+                    src.componentInfo,
+                    FingerprintSensorProperties.TYPE_UDFPS_OPTICAL,
+                    true /* halControlsIllumination */,
+                    src.halHandlesDisplayTouches,
+                    src.resetLockoutRequiresHardwareAuthToken,
+                    List.of(new SensorLocationInternal("" /* displayId */, x, y, r))));
+            Log.i(TAG, "Coerced fingerprint sensorId=" + src.sensorId
+                    + " type " + src.sensorType + " -> TYPE_UDFPS_OPTICAL "
+                    + "(config_udfps_sensor_props present)");
+            changed = true;
+        }
+        return changed ? out : sensors;
     }
 
     private void handleAllFaceAuthenticatorsRegistered(List<FaceSensorPropertiesInternal> sensors) {

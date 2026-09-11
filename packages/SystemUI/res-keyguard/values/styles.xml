@@ -147,7 +147,10 @@
 
     <style name="TextAppearance.Keyguard.BottomArea">
         <item name="android:textSize">14sp</item>
-        <item name="android:maxLines">1</item>
+        <!-- 2 lines: charging status + optional lockscreen battery info (A/V/W/°C).
+             maxLines=1 with a "\n" jammed both lines into one height and overlapped. -->
+        <item name="android:maxLines">2</item>
+        <item name="android:lineSpacingExtra">4dp</item>
         <item name="android:gravity">center</item>
         <item name="android:textColor">?attr/wallpaperTextColor</item>
     </style>

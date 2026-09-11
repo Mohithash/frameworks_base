@@ -388,10 +388,22 @@ constructor(
                 else -> false
             }
 
-        // Use expanded overlay unless touchExploration enabled
+        // Use expanded overlay unless touchExploration enabled. On keyguard, limit the
+        // window to the sensor so swipe-to-bouncer / shade drag are not pilfered by a
+        // full-screen UdfpsControllerOverlay (seen as lockscreen rubber-banding).
         var rotatedBounds =
             if (accessibilityManager.isTouchExplorationEnabled && isEnrollment) {
                 Rect(overlayParams.sensorBounds)
+            } else if (requestReason == REASON_AUTH_KEYGUARD) {
+                val pad = (overlayParams.sensorBounds.width() * 0.35f).toInt().coerceAtLeast(48)
+                Rect(
+                    (overlayParams.sensorBounds.left - pad).coerceAtLeast(0),
+                    (overlayParams.sensorBounds.top - pad).coerceAtLeast(0),
+                    (overlayParams.sensorBounds.right + pad)
+                        .coerceAtMost(overlayParams.naturalDisplayWidth),
+                    (overlayParams.sensorBounds.bottom + pad)
+                        .coerceAtMost(overlayParams.naturalDisplayHeight),
+                )
             } else {
                 Rect(0, 0, overlayParams.naturalDisplayWidth, overlayParams.naturalDisplayHeight)
             }

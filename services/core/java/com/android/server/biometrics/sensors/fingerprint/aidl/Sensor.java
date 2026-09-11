@@ -30,8 +30,10 @@ import android.hardware.biometrics.SensorLocationInternal;
 import android.hardware.biometrics.common.ComponentInfo;
 import android.hardware.biometrics.fingerprint.IFingerprint;
 import android.hardware.biometrics.fingerprint.ISession;
+import android.hardware.biometrics.fingerprint.SensorLocation;
 import android.hardware.biometrics.fingerprint.SensorProps;
 import android.hardware.fingerprint.FingerprintManager;
+import android.hardware.fingerprint.FingerprintSensorProperties;
 import android.hardware.fingerprint.FingerprintSensorPropertiesInternal;
 import android.os.Binder;
 import android.os.Handler;
@@ -114,7 +116,7 @@ public class Sensor {
             @NonNull BiometricContext biometricContext,
             @NonNull List<SensorLocationInternal> workaroundLocation,
             boolean resetLockoutRequiresHardwareAuthToken) {
-        this(provider, context, handler, getFingerprintSensorPropertiesInternal(sensorProp,
+        this(provider, context, handler, getFingerprintSensorPropertiesInternal(context, sensorProp,
                         workaroundLocation, resetLockoutRequiresHardwareAuthToken),
                 biometricContext, null);
     }
@@ -209,6 +211,7 @@ public class Sensor {
     }
 
     protected static FingerprintSensorPropertiesInternal getFingerprintSensorPropertiesInternal(
+            @NonNull Context context,
             SensorProps prop, List<SensorLocationInternal> workaroundLocations,
             boolean resetLockoutRequiresHardwareAuthToken) {
         final List<ComponentInfoInternal> componentInfo = new ArrayList<>();
@@ -219,23 +222,49 @@ public class Sensor {
                         info.softwareVersion));
             }
         }
+        int sensorType = prop.sensorType;
+        List<SensorLocationInternal> locations = !workaroundLocations.isEmpty()
+                ? workaroundLocations
+                : Arrays.stream(prop.sensorLocations != null ? prop.sensorLocations
+                                : new SensorLocation[0])
+                        .map(location ->
+                                new SensorLocationInternal(
+                                        location.display,
+                                        location.sensorLocationX,
+                                        location.sensorLocationY,
+                                        location.sensorRadius,
+                                        location.sensorLocationData))
+                        .collect(Collectors.toList());
+
+        // BestROM/peridot: AIDL HALs ignore config_udfps_sensor_props (HIDL AuthService
+        // path only). When the overlay array is set, force optical UDFPS — dirty-flash
+        // can leave persist.vendor.fingerprint.type=udfps (ultrasonic), which arms a
+        // full-screen keyguard touch overlay and steals swipe-to-bouncer.
+        final int[] udfpsProps = context.getResources().getIntArray(
+                com.android.internal.R.array.config_udfps_sensor_props);
+        if (udfpsProps.length == 3) {
+            final boolean isOptical =
+                    sensorType == FingerprintSensorProperties.TYPE_UDFPS_OPTICAL;
+            if (!isOptical) {
+                Slog.i(TAG, "Forcing TYPE_UDFPS_OPTICAL from config_udfps_sensor_props "
+                        + "(HAL reported type " + sensorType + ")");
+                sensorType = FingerprintSensorProperties.TYPE_UDFPS_OPTICAL;
+            }
+            if (locations.isEmpty() || !isOptical) {
+                locations = List.of(new SensorLocationInternal(
+                        "" /* displayId */, udfpsProps[0], udfpsProps[1], udfpsProps[2]));
+            }
+        }
+
         return new FingerprintSensorPropertiesInternal(prop.commonProps.sensorId,
                 prop.commonProps.sensorStrength,
                 prop.commonProps.maxEnrollmentsPerUser,
                 componentInfo,
-                prop.sensorType,
+                sensorType,
                 prop.halControlsIllumination,
                 prop.halHandlesDisplayTouches,
                 resetLockoutRequiresHardwareAuthToken,
-                !workaroundLocations.isEmpty() ? workaroundLocations :
-                        Arrays.stream(prop.sensorLocations).map(location ->
-                                        new SensorLocationInternal(
-                                                location.display,
-                                                location.sensorLocationX,
-                                                location.sensorLocationY,
-                                                location.sensorRadius,
-                                                location.sensorLocationData))
-                                .collect(Collectors.toList()));
+                locations);
     }
 
     @NonNull public Supplier<AidlSession> getLazySession() {
