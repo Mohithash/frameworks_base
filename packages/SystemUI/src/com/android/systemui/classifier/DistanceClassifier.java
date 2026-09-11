@@ -24,13 +24,16 @@ import static com.android.internal.config.sysui.SystemUiDeviceConfigFlags.BRIGHT
 import static com.android.internal.config.sysui.SystemUiDeviceConfigFlags.BRIGHTLINE_FALSING_DISTANCE_VERTICAL_SWIPE_THRESHOLD_IN;
 import static com.android.systemui.classifier.Classifier.ALTERNATE_BOUNCER_SWIPE;
 import static com.android.systemui.classifier.Classifier.BOUNCER_SWIPE;
+import static com.android.systemui.classifier.Classifier.BOUNCER_UNLOCK;
 import static com.android.systemui.classifier.Classifier.BRIGHTNESS_SLIDER;
 import static com.android.systemui.classifier.Classifier.GLANCEABLE_HUB_SWIPE;
 import static com.android.systemui.classifier.Classifier.MEDIA_CAROUSEL_SWIPE;
 import static com.android.systemui.classifier.Classifier.MEDIA_SEEKBAR;
 import static com.android.systemui.classifier.Classifier.QS_COLLAPSE;
 import static com.android.systemui.classifier.Classifier.QS_SWIPE_NESTED;
+import static com.android.systemui.classifier.Classifier.QUICK_SETTINGS;
 import static com.android.systemui.classifier.Classifier.SHADE_DRAG;
+import static com.android.systemui.classifier.Classifier.UNLOCK;
 
 import android.provider.DeviceConfig;
 import android.view.MotionEvent;
@@ -167,7 +170,15 @@ class DistanceClassifier extends FalsingClassifier {
                 || interactionType == QS_SWIPE_NESTED
                 || interactionType == ALTERNATE_BOUNCER_SWIPE
                 || interactionType == GLANCEABLE_HUB_SWIPE
-                || interactionType == BOUNCER_SWIPE) {
+                || interactionType == BOUNCER_SWIPE
+                // Lockscreen swipe-to-bouncer / unlock. DistanceClassifier's 80%-of-screen
+                // vertical threshold (e.g. 2169px on peridot) rejects normal swipes and
+                // flingExpands() then forces expand=true → rubber-band rebound.
+                || interactionType == BOUNCER_UNLOCK
+                || interactionType == UNLOCK
+                // Lockscreen QS pull-down: isQsFalseTouch() collapses on any Distance
+                // false, so a normal fling never sticks unless dragged to the end.
+                || interactionType == QUICK_SETTINGS) {
             return Result.passed(0);
         }
 

@@ -1683,6 +1683,12 @@ public final class NotificationPanelViewController implements
                 }
             } else {
                 mShadeLog.d("flingExpands: ignoring false touch");
+                // Default expands=true is correct for pocket QS rejection. For upward
+                // lockscreen unlock/bouncer swipes it flings expansion to 1f, which
+                // FromLockscreenTransitionInteractor treats as CANCELED (rubber-band).
+                if (interactionType == BOUNCER_UNLOCK || interactionType == UNLOCK) {
+                    expands = shouldExpandWhenNotFlinging();
+                }
             }
         }
 

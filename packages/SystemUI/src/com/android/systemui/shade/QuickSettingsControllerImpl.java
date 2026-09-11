@@ -2063,8 +2063,16 @@ public class QuickSettingsControllerImpl implements QuickSettingsController, Dum
         // TODO (b/265193930): remove dependency on NPVC
         boolean expandsQs = mPanelViewControllerLazy.get().flingExpandsQs(vel);
         if (expandsQs) {
-            if (mFalsingManager.isUnlockingDisabled() || isQsFalseTouch()) {
+            if (mFalsingManager.isUnlockingDisabled()) {
                 expandsQs = false;
+            } else if (isQsFalseTouch()) {
+                // Pocket rejection collapses. If the user already dragged past
+                // halfway, keep the open — otherwise a DistanceClassifier miss
+                // forces a full drag to the end before QS will stick.
+                expandsQs = computeExpansionFraction() > 0.5f;
+                if (expandsQs) {
+                    logQsSwipeDown(y);
+                }
             } else {
                 logQsSwipeDown(y);
             }
