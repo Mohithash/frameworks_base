@@ -33,8 +33,11 @@
     <!-- Controls whether the IME renders the back and IME switcher buttons or not. -->
     <bool name="config_imeDrawsImeNavBar">true</bool>
 
-    <!-- Controls the size of the back gesture inset. -->
-    <dimen name="config_backGestureInset">30dp</dimen>
+    <!-- Controls the size of the back gesture inset.
+         BestROM/peridot: stock 30dp (90px) pilfers Telegram/WhatsApp
+         swipe-to-reply. FrameworkOverlayPeridot also sets 8dp but loses to
+         this overlay's priority (MAX_INT). Keep them matched. -->
+    <dimen name="config_backGestureInset">8dp</dimen>
 
     <!-- Controls whether the navbar needs a scrim with
      {@link Window#setEnsuringNavigationBarContrastWhenTransparent}. -->
