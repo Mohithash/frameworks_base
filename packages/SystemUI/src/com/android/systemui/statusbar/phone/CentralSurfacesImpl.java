@@ -447,8 +447,6 @@ public class CentralSurfacesImpl implements CoreStartable, CentralSurfaces {
 
     protected boolean mDozing;
 
-    private float mLastExpansionFraction = 0f;
-
     boolean mCloseQsBeforeScreenOff;
 
     private final NotificationMediaManager mMediaManager;
@@ -1199,17 +1197,11 @@ public class CentralSurfacesImpl implements CoreStartable, CentralSurfaces {
      * keyguard.
      */
     private void dispatchPanelExpansionForKeyguardDismiss(float fraction, boolean trackingTouch) {
-        // If we're expanding the panel right after dismissing keyguard, the unlock animation
-        // might still be running and the panel background will remain transparent until it's
-        // completed (~0.5s). To prevent this, cancel the unlock animation as soon as we start
-        // expanding.
-        if (mLastExpansionFraction == 0f && fraction > 0f && !mKeyguardStateController.isShowing()
-                && mKeyguardViewMediator.isAnimatingBetweenKeyguardAndSurfaceBehind()) {
-            Log.i(TAG, "cancelling kg exit anim, panel expanding fraction=" + fraction
-                    + " mLastExpansionFraction=" + mLastExpansionFraction);
-            mKeyguardViewMediator.cancelKeyguardExitAnimation();
-            return;
-        }
+        // Voltage used to cancelKeyguardExitAnimation() here when the shade
+        // expanded mid-unlock. That left StatusBarState=KEYGUARD with a
+        // touchable NotificationShade over the resumed app (Telegram looks
+        // visible; swipe-to-reply never reaches it). Let the unlock anim
+        // finish; a brief transparent shade is preferable to a stuck overlay.
 
         // Things that mean we're not swiping to dismiss the keyguard, and should ignore this
         // expansion:
@@ -1263,8 +1255,6 @@ public class CentralSurfacesImpl implements CoreStartable, CentralSurfaces {
                 getShadeViewController().updateSystemUiStateFlags();
             }
         }
-
-        mLastExpansionFraction = fraction;
     }
 
     @NonNull
