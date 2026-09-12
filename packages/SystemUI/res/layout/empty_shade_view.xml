@@ -32,7 +32,8 @@
         android:gravity="center"
         android:orientation="vertical"
         android:paddingVertical="@dimen/empty_shade_vertical_padding"
-        android:paddingHorizontal="@dimen/empty_shade_horizontal_padding">
+        android:paddingHorizontal="@dimen/empty_shade_horizontal_padding"
+        android:visibility="gone">
 
         <ImageView
             android:id="@id/icon"
@@ -41,8 +42,7 @@
             android:layout_marginBottom="@dimen/empty_shade_icon_bottom_margin"
             android:scaleType="fitCenter"
             android:tint="@color/materialColorOnSurface"
-            android:importantForAccessibility="no"
-            android:src="@drawable/ic_trophy"></ImageView>
+            android:importantForAccessibility="no" />
 
         <TextView
             android:id="@+id/text"

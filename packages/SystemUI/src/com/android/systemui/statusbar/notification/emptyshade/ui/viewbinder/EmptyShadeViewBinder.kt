@@ -37,8 +37,11 @@ object EmptyShadeViewBinder {
 
             launch {
                 viewModel.message.collect {
-                    view.setText(it.message)
-                    view.setIcon(it.icon)
+                    view.setContentHidden(it.hidden)
+                    if (!it.hidden) {
+                        view.setText(it.message)
+                        view.setIcon(it.icon)
+                    }
                 }
             }
         } else {

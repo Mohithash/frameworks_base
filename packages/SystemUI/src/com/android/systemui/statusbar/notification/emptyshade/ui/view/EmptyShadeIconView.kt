@@ -74,6 +74,10 @@ class EmptyShadeIconView @JvmOverloads constructor(context: Context, attrs: Attr
         textView.text = text
     }
 
+    fun setContentHidden(hidden: Boolean) {
+        findContentView().visibility = if (hidden) View.GONE else View.VISIBLE
+    }
+
     fun setIcon(icon: Icon) {
         val drawable =
             when (icon) {

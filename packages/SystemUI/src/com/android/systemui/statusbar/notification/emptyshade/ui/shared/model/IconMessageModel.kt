@@ -18,4 +18,9 @@ package com.android.systemui.statusbar.notification.emptyshade.ui.shared.model
 
 import com.android.systemui.common.shared.model.Icon
 
-data class IconMessageModel(val icon: Icon, val message: String)
+data class IconMessageModel(
+    val icon: Icon,
+    val message: String,
+    /** When true the shade shows neither the icon nor the message. */
+    val hidden: Boolean = false,
+)

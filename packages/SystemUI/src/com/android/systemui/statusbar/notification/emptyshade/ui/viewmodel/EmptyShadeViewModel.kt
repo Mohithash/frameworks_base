@@ -109,6 +109,7 @@ constructor(
                             IconMessageModel(
                                 message = context.getString(R.string.caught_up_shade_text),
                                 icon = Icon.Resource(R.drawable.ic_trophy, null),
+                                hidden = true,
                             )
                         else ->
                             IconMessageModel(
